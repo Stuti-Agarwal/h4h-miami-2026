@@ -3,7 +3,7 @@ import os
 
 import requests
 
-PROMPT = """You are a walking guide in Miami. Recommend one route for a pedestrian in {language}, in 3 short sentences.
+PROMPT = """You are a walking guide in Miami. Recommend one route for a pedestrian in {language}, in at most 3 short sentences (under 60 words).
 It is {when} ({mode}). Routes were ranked by {rule}.
 The recommended route is {best}. Recommend {best} and say why, comparing it with the others.
 Describe streets only by shade, lighting and open businesses. Never call a neighborhood or its people unsafe. Stick to the numbers given and do not exaggerate.
@@ -35,10 +35,11 @@ def _ollama(prompt):
     return r.json()["message"]["content"].strip()
 
 
-CHAT_PROMPT = """You are a walking guide in Miami answering a pedestrian's question in {language}, in at most 3 short sentences.
+CHAT_PROMPT = """You are a walking guide in Miami answering a pedestrian's question in {language}, in at most 3 short sentences (under 60 words).
 It is {when} ({mode}). Their candidate routes:
 {routes}
-Recommended: {best}. Answer only from these numbers and general walking-safety common sense; if the data can't answer, say so.
+Recommended: {best}. On {best}, by departure time: {other_times}.
+Answer only from these numbers and general walking-safety common sense; if the data can't answer, say so.
 Describe streets only by shade, lighting and open businesses. Never call a neighborhood or its people unsafe.
 Conversation so far:
 {history}
@@ -89,11 +90,11 @@ def summarize(scored, language="English"):
     return _generate(prompt, "Route summary unavailable right now.")
 
 
-def chat(scored, question, history, language="English"):
+def chat(scored, question, history, language="English", other_times="unknown"):
     """Answer a free-text question about the scored routes. history: [{"role": "user"|"gemma", "text"}]."""
     past = "\n".join(f"{m.get('role', 'user')}: {str(m.get('text', ''))[:300]}" for m in history) or "(none)"
     prompt = CHAT_PROMPT.format(
         language=language, when=scored["when"], mode="daytime" if scored["daylight"] else "night",
-        routes=_route_lines(scored), best=scored["recommended"], history=past, question=question,
+        routes=_route_lines(scored), best=scored["recommended"], history=past, question=question, other_times=other_times,
     )
     return _generate(prompt, "Sorry, I can't answer right now. Try again in a moment.")

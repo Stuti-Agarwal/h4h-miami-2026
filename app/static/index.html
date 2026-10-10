@@ -2,159 +2,293 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SombraRoute · Miami</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SombraRoute</title>
+<meta name="theme-color" content="#1a73e8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SombraRoute">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root { --sun:#f59e0b; --shade:#0f766e; --night:#312e81; --lit:#facc15; --ink:#0f172a; --muted:#64748b; --card:#fff; --bg:#f8fafc; }
+  :root { --blue:#1a73e8; --blue-dk:#1967d2; --sun:#f9ab00; --ink:#202124; --muted:#5f6368; --line:#dadce0; --bg:#f1f3f4; }
   * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.4 system-ui, -apple-system, sans-serif; color:var(--ink); background:var(--bg); display:grid; grid-template-columns:380px 1fr; height:100vh; }
-  aside { padding:20px; overflow-y:auto; border-right:1px solid #e2e8f0; background:var(--card); }
-  h1 { margin:0; font-size:22px; } h1 span { color:var(--shade); }
-  .sub { color:var(--muted); margin:4px 0 16px; }
-  .trip { font-size:13px; background:var(--bg); border-radius:10px; padding:10px 12px; margin-bottom:16px; }
-  .trip b { display:block; }
-  .time { display:flex; align-items:baseline; justify-content:space-between; }
-  .clock { font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .mode { font-size:12px; font-weight:600; padding:3px 10px; border-radius:99px; background:#fef3c7; color:#92400e; }
-  .mode.night { background:#e0e7ff; color:var(--night); }
-  input[type=range] { width:100%; margin:10px 0 4px; accent-color:var(--shade); }
-  .ticks { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
-  .date { margin:12px 0 18px; font-size:13px; color:var(--muted); } .date input { font:inherit; }
-  .route { border:2px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:10px; cursor:pointer; transition:border-color .15s; }
-  .route.best { border-color:var(--shade); background:#f0fdfa; }
-  .route .top { display:flex; justify-content:space-between; font-weight:600; }
-  .badge { font-size:11px; background:var(--shade); color:#fff; border-radius:99px; padding:2px 8px; }
-  .metric { font-size:13px; color:var(--muted); margin-top:4px; }
-  .bar { height:6px; border-radius:3px; background:#e2e8f0; margin-top:8px; overflow:hidden; } .bar i { display:block; height:100%; background:var(--shade); }
-  .note { font-size:11px; color:var(--muted); margin-top:16px; }
-  .ai { background:linear-gradient(135deg,#f0fdfa,#eef2ff); border-radius:12px; padding:12px 14px; margin-bottom:14px; }
-  .ai-head { display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:13px; }
-  .ai-head select { font:inherit; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; }
-  .ai-text { font-size:14px; margin-top:6px; min-height:40px; } .ai-text.loading { color:var(--muted); }
-  .ai-engine { font-size:10px; color:var(--muted); margin-top:6px; }
-  #map { height:100vh; } #map .leaflet-tile-pane { filter: grayscale(.85) brightness(1.05); }
-  .legend { background:#fff; padding:8px 10px; border-radius:8px; font-size:12px; line-height:1.7; box-shadow:0 1px 4px #0002; }
-  .legend i { display:inline-block; width:18px; height:4px; margin-right:6px; vertical-align:middle; border-radius:2px; }
+  html, body { margin:0; height:100%; font-family: Roboto, system-ui, sans-serif; color:var(--ink); background:var(--bg); overflow:hidden; }
+  #map { position:fixed; inset:0; }
+  #map .leaflet-tile-pane { filter: saturate(.55) brightness(1.04); }
+  body.night #map .leaflet-tile-pane { filter: invert(.92) hue-rotate(180deg) saturate(.4) brightness(.9); }
+  button, input, select { font: inherit; }
+  .card { position:fixed; left:12px; right:12px; top:calc(12px + env(safe-area-inset-top)); z-index:1000; background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(60,64,67,.3); padding:10px 12px; display:flex; gap:10px; align-items:center; }
+  .card .dots { width:12px; flex:none; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .card .dots i { display:block; width:3px; height:3px; border-radius:50%; background:#9aa0a6; }
+  .card form { flex:1; display:flex; flex-direction:column; gap:6px; margin:0; }
+  .card input { height:38px; border:1px solid var(--line); border-radius:6px; padding:0 10px; font-size:16px; width:100%; }
+  .card input:focus { outline:none; border:2px solid var(--blue); padding:0 9px; }
+  .iconbtn { width:44px; height:44px; border:0; background:transparent; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .chips { position:fixed; left:12px; right:12px; top:calc(112px + env(safe-area-inset-top)); z-index:1000; display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { min-height:36px; padding:0 14px; border-radius:18px; border:0; background:#fff; color:#3c4043; font-size:14px; box-shadow:0 1px 3px rgba(60,64,67,.3); display:flex; align-items:center; gap:6px; }
+  .chip.on { background:#e8f0fe; color:var(--blue-dk); font-weight:500; }
+  button.chip { cursor:pointer; }
+  .sheet { position:fixed; left:0; right:0; bottom:0; z-index:1000; max-height:52vh; overflow-y:auto; background:#fff; border-radius:16px 16px 0 0; box-shadow:0 -2px 8px rgba(60,64,67,.2); padding:8px 16px calc(16px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:12px; }
+  .grab { align-self:center; width:32px; height:4px; border-radius:2px; background:var(--line); flex:none; }
+  .row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .clock { font-size:28px; font-weight:500; font-variant-numeric:tabular-nums; }
+  .mode { font-size:12px; font-weight:500; padding:5px 12px; border-radius:99px; background:#fef7e0; color:#7a4a00; white-space:nowrap; }
+  body.night .mode { background:#e8eaf6; color:#283593; }
+  input[type=range] { width:100%; accent-color:var(--blue); margin:0; height:32px; }
+  .ticks { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:-6px; }
+  .ai { display:flex; gap:10px; align-items:flex-start; background:#f8f9fa; border-radius:12px; padding:10px 12px; }
+  .ai p { margin:0; font-size:14px; line-height:1.45; }
+  .ai p.loading { color:var(--muted); }
+  .ai .meta { display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap; font-size:11px; color:var(--muted); }
+  .lang { border:1px solid var(--line); background:#fff; border-radius:99px; min-height:28px; padding:0 10px; font-size:12px; cursor:pointer; }
+  .lang.on { background:var(--blue); color:#fff; border-color:var(--blue); }
+  .route { border:1px solid var(--line); border-radius:12px; padding:10px 14px; display:flex; flex-direction:column; gap:6px; cursor:pointer; background:#fff; text-align:left; width:100%; color:inherit; }
+  .route.best { border:2px solid var(--blue); background:#f8fbff; }
+  .route .top { display:flex; justify-content:space-between; align-items:center; font-weight:500; }
+  .badge { font-size:11px; font-weight:500; background:var(--blue); color:#fff; padding:3px 9px; border-radius:99px; }
+  .sub { font-size:13px; color:var(--muted); }
+  .bar { height:8px; border-radius:4px; background:#e8eaed; display:flex; overflow:hidden; }
+  .toast { position:fixed; left:50%; transform:translateX(-50%); top:calc(160px + env(safe-area-inset-top)); z-index:1100; background:#323232; color:#fff; padding:10px 16px; border-radius:8px; font-size:14px; max-width:90vw; display:none; }
+  .chat { position:fixed; inset:0; z-index:1200; background:#fff; display:none; flex-direction:column; }
+  .chat.open { display:flex; }
+  .chat header { display:flex; align-items:center; gap:8px; padding:calc(10px + env(safe-area-inset-top)) 12px 10px; box-shadow:0 1px 3px rgba(60,64,67,.2); }
+  .msgs { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:84%; padding:10px 14px; font-size:15px; line-height:1.45; border-radius:18px; }
+  .msg.user { align-self:flex-end; background:var(--blue); color:#fff; border-bottom-right-radius:4px; }
+  .msg.gemma { align-self:flex-start; background:var(--bg); border-bottom-left-radius:4px; }
+  .msg.gemma small { display:block; color:var(--muted); font-size:10px; margin-top:4px; }
+  .suggest { display:flex; gap:8px; flex-wrap:wrap; padding:0 16px 8px; }
+  .suggest button { min-height:36px; padding:0 12px; border-radius:18px; border:1px solid var(--line); background:#fff; color:var(--blue); font-size:13px; cursor:pointer; }
+  .compose { display:flex; gap:8px; padding:10px 12px calc(14px + env(safe-area-inset-bottom)); border-top:1px solid #e8eaed; margin:0; }
+  .compose input { flex:1; height:48px; border:1px solid var(--line); border-radius:24px; padding:0 16px; font-size:16px; background:#f8f9fa; }
+  .send { width:48px; height:48px; border-radius:50%; border:0; background:var(--blue); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .sr { position:absolute; left:-9999px; }
+  @media (min-width: 760px) {
+    .card, .chips { right:auto; width:400px; }
+    .sheet { left:12px; right:auto; bottom:12px; width:400px; max-height:calc(100vh - 190px); border-radius:16px; }
+    .chat { left:auto; width:420px; box-shadow:-2px 0 8px rgba(60,64,67,.2); }
+  }
 </style>
 </head>
 <body>
-<aside>
-  <h1>Sombra<span>Route</span></h1>
-  <div class="sub">The coolest walk by day. The brightest walk by night.</div>
-  <div class="trip"><b>From</b>300 SW 2nd Ave, Downtown<b style="margin-top:6px">To</b>The LAB Miami, Wynwood</div>
+<div id="map" role="application" aria-label="Map of walking routes"></div>
 
-  <div class="time"><div class="clock" id="clock">4:00 PM</div><div class="mode" id="mode">☀️ Day · minimize sun</div></div>
-  <input type="range" id="hour" min="6" max="23" step="0.25" value="16">
-  <div class="ticks"><span>6 AM</span><span>noon</span><span>6 PM</span><span>11 PM</span></div>
-  <div class="date">Date <input type="date" id="date" value="2026-10-10"></div>
-
-  <div class="ai">
-    <div class="ai-head"><span>✨ Gemma 4 says</span>
-      <select id="lang"><option>English</option><option value="Spanish">Español</option><option value="Haitian Creole">Kreyòl</option></select></div>
-    <div id="summary" class="ai-text">…</div><div id="engine" class="ai-engine"></div>
+<div class="card">
+  <div class="dots" aria-hidden="true">
+    <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#1a73e8" stroke-width="2"/></svg>
+    <i></i><i></i><i></i>
+    <svg width="12" height="16" viewBox="0 0 12 16"><path d="M6 0C2.7 0 0 2.6 0 5.8 0 10 6 16 6 16s6-6 6-10.2C12 2.6 9.3 0 6 0z" fill="#ea4335"/></svg>
   </div>
-  <div id="routes"></div>
-  <div class="note">Shade = Overture building shadows from the sun's position + Miami-Dade 2021 tree canopy. Night = Miami-Dade street lights + OpenStreetMap lamps and lit streets + venues likely open late.</div>
-</aside>
-<div id="map"></div>
+  <form id="trip">
+    <label class="sr" for="from">Starting point</label>
+    <input id="from" value="300 SW 2nd Ave" autocomplete="off" enterkeyhint="search">
+    <label class="sr" for="to">Destination</label>
+    <input id="to" value="The LAB Miami" autocomplete="off" enterkeyhint="search">
+    <button type="submit" class="sr">Find routes</button>
+  </form>
+  <button class="iconbtn" id="swap" aria-label="Swap start and destination"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v14M4 14l4 4 4-4M16 20V6M12 10l4-4 4 4" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</div>
+
+<div class="chips">
+  <span class="chip on"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4" r="2" fill="#1967d2"/><path d="M13 7l-3 6 3 3-1 5M10 13l-3 8M12 9l4 3" fill="none" stroke="#1967d2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Walk</span>
+  <span class="chip" id="goalchip">Shadiest</span>
+  <button class="chip" id="openchat"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2 7 7 3-7 3-2 7-2-7-7-3 7-3z" fill="#1a73e8"/></svg>Ask Gemma</button>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<section class="sheet" aria-label="Routes">
+  <div class="grab"></div>
+  <div class="row"><div class="clock" id="clock">4:00 PM</div><div class="mode" id="mode">Day · least sun</div></div>
+  <div>
+    <label class="sr" for="hour">Departure time</label>
+    <input type="range" id="hour" min="6" max="23" step="0.25" value="16">
+    <div class="ticks"><span>6 AM</span><span>Noon</span><span>6 PM</span><span>11 PM</span></div>
+  </div>
+  <div class="ai">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="flex:none;margin-top:2px"><path d="M12 2l2 7 7 3-7 3-2 7-2-7-7-3 7-3z" fill="#1a73e8"/></svg>
+    <div style="flex:1">
+      <p id="summary" class="loading">Thinking about your walk…</p>
+      <div class="meta">
+        <button class="lang on" data-lang="English">EN</button>
+        <button class="lang" data-lang="Spanish">ES</button>
+        <button class="lang" data-lang="Haitian Creole">KRE</button>
+        <span id="engine"></span>
+      </div>
+    </div>
+  </div>
+  <div id="routes" style="display:flex;flex-direction:column;gap:8px"></div>
+  <p class="sub" style="margin:0;font-size:11px">Shade: Overture building shadows from the sun's position + Miami-Dade 2021 tree canopy. Night: county + OpenStreetMap street lights and places likely open late. Covers Downtown to Wynwood.</p>
+</section>
+
+<section class="chat" id="chat" aria-label="Ask Gemma">
+  <header>
+    <button class="iconbtn" id="closechat" aria-label="Back to routes"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div style="flex:1"><div style="font-size:17px;font-weight:500">Ask about your walk</div><div class="sub" id="chatctx" style="font-size:12px">Gemma 4 · knows your routes and the time</div></div>
+  </header>
+  <div class="msgs" id="msgs"></div>
+  <div class="suggest">
+    <button data-q="When should I leave to get the most shade?">Best time to leave?</button>
+    <button data-q="Is there a bus stop on the way if I get tired?">Bus stops nearby</button>
+    <button data-q="Which route has more open places to stop?">Places to stop</button>
+  </div>
+  <form class="compose" id="compose">
+    <label class="sr" for="q">Message</label>
+    <input id="q" placeholder="Ask about shade, lights, stops…" autocomplete="off" enterkeyhint="send">
+    <button class="send" aria-label="Send"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20l18-8L3 4l2 8z" fill="#fff"/></svg></button>
+  </form>
+</section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const map = L.map('map', { zoomControl: true }).setView([25.787, -80.198], 15);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors (ODbL) · Overture Maps · Miami-Dade County',
-  maxZoom: 19,
-}).addTo(map);
-const shadowLayer = L.geoJSON(null, { style: { color: '#334155', weight: 0, fillOpacity: 0.18 }, interactive: false }).addTo(map);
-const routeLayer = L.layerGroup().addTo(map);
-L.marker([25.77091, -80.19785]).addTo(map).bindTooltip('300 SW 2nd Ave');
-L.marker([25.80244, -80.20199]).addTo(map).bindTooltip('The LAB Miami');
-
-const legend = L.control({ position: 'bottomright' });
-legend.onAdd = () => Object.assign(L.DomUtil.create('div', 'legend'), { id: 'legend' });
-legend.addTo(map);
-
 const $ = (id) => document.getElementById(id);
+const DEMO = { from: [25.77091, -80.19785], to: [25.80244, -80.20199] };
+const map = L.map('map', { zoomControl: false }).setView([25.787, -80.197], 15);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL) · Overture Maps · Miami-Dade County', maxZoom: 19,
+}).addTo(map);
+const shadowLayer = L.geoJSON(null, { style: { color: '#3c4043', weight: 0, fillOpacity: 0.16 }, interactive: false }).addTo(map);
+const routeLayer = L.layerGroup().addTo(map);
+const pin = (color) => L.divIcon({ className: '', iconSize: [28, 36], iconAnchor: [14, 34],
+  html: `<svg width="28" height="36" viewBox="0 0 12 16"><path d="M6 0C2.7 0 0 2.6 0 5.8 0 10 6 16 6 16s6-6 6-10.2C12 2.6 9.3 0 6 0z" fill="${color}"/><circle cx="6" cy="6" r="2.2" fill="#fff"/></svg>` });
+const startPin = L.marker(DEMO.from, { draggable: true, icon: pin('#1a73e8'), title: 'Start (drag to move)' }).addTo(map);
+const endPin = L.marker(DEMO.to, { draggable: true, icon: pin('#ea4335'), title: 'Destination (drag to move)' }).addTo(map);
+let custom = false, lang = 'English', last = null, selected = null, ticket = 0, history = [];
+
 const fmtHour = (h) => { const hh = Math.floor(h), mm = Math.round((h % 1) * 60); return `${(hh % 12) || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`; };
 const km = (m) => (m / 1000).toFixed(1) + ' km';
-let selected = null, last = null, pending = 0;
-
-function segmentColor(s, day) {
-  if (day) return s.shaded ? '#0f766e' : '#f59e0b';
-  return s.lit || s.active ? '#facc15' : '#1e1b4b';
+const mins = (m) => Math.round(m / 80) + ' min';  // ~4.8 km/h walking
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function toast(text) { const t = $('toast'); t.textContent = text; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 4000); }
+function params() {
+  const p = new URLSearchParams({ hour: $('hour').value, date: '2026-10-10', lang });
+  if (custom) { const a = startPin.getLatLng(), b = endPin.getLatLng(); p.set('from', `${a.lng},${a.lat}`); p.set('to', `${b.lng},${b.lat}`); }
+  return p;
+}
+async function getJSON(url, opts) {
+  const r = await fetch(url, opts); const body = await r.json();
+  if (!r.ok) throw new Error(body.error || 'Something went wrong');
+  return body;
 }
 
 function draw() {
-  if (!last) return;
   routeLayer.clearLayers();
-  const day = last.daylight;
-  const focus = selected || last.recommended;
+  const day = last.daylight, focus = selected || last.recommended;
   for (const r of [...last.routes].reverse()) {
-    const isFocus = r.name === focus;
-    if (!isFocus) {
-      L.polyline(r.geometry.coordinates.map(([x, y]) => [y, x]), { color: '#94a3b8', weight: 4, opacity: 0.6 })
-        .on('click', () => { selected = r.name; render(); }).addTo(routeLayer);
+    const pts = r.geometry.coordinates.map(([x, y]) => [y, x]);
+    if (r.name !== focus) {
+      L.polyline(pts, { color: '#bdc1c6', weight: 7, opacity: .9 }).on('click', () => { selected = r.name; render(); }).addTo(routeLayer);
       continue;
     }
-    const pts = r.samples;
-    for (let i = 1; i < pts.length; i++) {
-      L.polyline([[pts[i - 1].lat, pts[i - 1].lon], [pts[i].lat, pts[i].lon]],
-        { color: segmentColor(pts[i], day), weight: 7, opacity: 0.95, lineCap: 'round' }).addTo(routeLayer);
+    L.polyline(pts, { color: '#174ea6', weight: 10, opacity: 1, interactive: false }).addTo(routeLayer);
+    const s = r.samples;
+    for (let i = 1; i < s.length; i++) {
+      const good = day ? s[i].shaded : (s[i].lit || s[i].active);
+      L.polyline([[s[i - 1].lat, s[i - 1].lon], [s[i].lat, s[i].lon]],
+        { color: good ? (day ? '#1a73e8' : '#fdd663') : (day ? '#f9ab00' : '#3c4043'), weight: 6, opacity: 1, interactive: false }).addTo(routeLayer);
     }
   }
-  $('legend').innerHTML = day
-    ? '<i style="background:#0f766e"></i>In shade<br><i style="background:#f59e0b"></i>Direct sun<br><i style="background:#94a3b8"></i>Other routes'
-    : '<i style="background:#facc15"></i>Lit or active<br><i style="background:#1e1b4b"></i>Dark &amp; empty<br><i style="background:#94a3b8"></i>Other routes';
 }
 
 function render() {
   const day = last.daylight;
-  $('mode').className = 'mode' + (day ? '' : ' night');
-  $('mode').textContent = day ? '☀️ Day · minimize sun' : '🌙 Night · stay lit & busy';
-  const worst = Math.max(...last.routes.map((r) => day ? r.sun_exposed_m : r.longest_dark_m)) || 1;
+  document.body.classList.toggle('night', !day);
+  $('mode').textContent = day ? 'Day · least sun' : 'Night · lit & busy';
+  $('goalchip').textContent = day ? 'Shadiest' : 'Brightest';
+  $('chatctx').textContent = `Gemma 4 · ${last.recommended} · ${fmtHour(+$('hour').value)}`;
   $('routes').innerHTML = last.routes.map((r) => {
-    const best = r.name === last.recommended;
-    const val = day ? r.sun_exposed_m : r.longest_dark_m;
-    const metric = day
-      ? `${km(r.sun_exposed_m)} in direct sun · ${Math.round(r.shade * 100)}% shaded`
-      : `Longest dark stretch ${r.longest_dark_m} m · ${Math.round(r.active * 100)}% near open venues`;
-    return `<div class="route ${best ? 'best' : ''}" data-name="${r.name}" style="${r.name === selected ? 'border-color:#0f172a' : ''}">
-      <div class="top"><span>${r.name}</span>${best ? '<span class="badge">Recommended</span>' : `<span class="metric">${km(r.distance_m)}</span>`}</div>
-      <div class="metric">${best ? km(r.distance_m) + ' · ' : ''}${metric}</div>
-      <div class="bar"><i style="width:${100 - (val / worst) * 100 + 4}%"></i></div></div>`;
+    const best = r.name === last.recommended, mine = r.name === (selected || last.recommended);
+    const good = day ? r.shade : 1 - r.longest_dark_m / r.distance_m;
+    const detail = day ? `${km(r.sun_exposed_m)} in direct sun · ${Math.round(r.shade * 100)}% shaded`
+                       : `Longest dark stretch ${r.longest_dark_m} m · ${Math.round(r.lit * 100)}% lit`;
+    return `<button class="route ${best ? 'best' : ''}" data-name="${esc(r.name)}" style="${mine && !best ? 'border-color:#202124' : ''}">
+      <span class="top"><span>${esc(r.name)}</span>${best ? `<span class="badge">${day ? 'Shadiest' : 'Brightest'}</span>` : `<span class="sub">${mins(r.distance_m)}</span>`}</span>
+      <span class="sub">${best ? `<b style="color:#188038">${mins(r.distance_m)}</b> (${km(r.distance_m)}) · ` : `${km(r.distance_m)} · `}${detail}</span>
+      <span class="bar"><span style="width:${Math.round(good * 100)}%;background:${day ? '#1a73e8' : '#fdd663'}"></span><span style="flex:1;background:${day ? '#fde293' : '#5f6368'}"></span></span>
+    </button>`;
   }).join('');
   document.querySelectorAll('.route').forEach((el) => el.onclick = () => { selected = el.dataset.name; render(); });
   draw();
 }
 
-async function update() {
-  const hour = $('hour').value, date = $('date').value;
-  $('clock').textContent = fmtHour(+hour);
-  const q = `?date=${date}&hour=${hour}`, ticket = ++pending;
-  const [routes, shadows] = await Promise.all([fetch('/api/routes' + q).then((r) => r.json()), fetch('/api/shadows' + q).then((r) => r.json())]);
-  if (ticket !== pending) return; // a newer slider value already requested
-  last = routes;
-  shadowLayer.clearLayers().addData(shadows);
-  render();
-  loadSummary(q, ticket);
+async function update(fit) {
+  $('clock').textContent = fmtHour(+$('hour').value);
+  const my = ++ticket, p = params();
+  try {
+    const [routes, shadows] = await Promise.all([getJSON('/api/routes?' + p), getJSON('/api/shadows?' + p)]);
+    if (my !== ticket) return;  // a newer request is already in flight
+    last = routes; if (fit) selected = null;
+    shadowLayer.clearLayers().addData(shadows);
+    render();
+    if (fit) map.fitBounds(L.latLngBounds(routes.routes.flatMap((r) => r.geometry.coordinates.map(([x, y]) => [y, x]))),
+      window.innerWidth >= 760 ? { paddingTopLeft: [440, 40], paddingBottomRight: [40, 40] } : { paddingTopLeft: [20, 170], paddingBottomRight: [20, window.innerHeight * .5] });
+    loadSummary(my);
+  } catch (e) { if (my === ticket) toast(e.message); }
 }
 
-async function loadSummary(q, ticket) {
-  $('summary').className = 'ai-text loading';
-  $('summary').textContent = 'Thinking about your walk…';
-  const s = await fetch(`/api/summary${q}&lang=${encodeURIComponent($('lang').value)}`).then((r) => r.json());
-  if (ticket !== pending) return;
-  $('summary').className = 'ai-text';
-  $('summary').textContent = s.text;
-  $('engine').textContent = s.engine === 'none' ? '' : `via ${s.engine}`;
+async function loadSummary(my) {
+  $('summary').className = 'loading'; $('summary').textContent = 'Thinking about your walk…'; $('engine').textContent = '';
+  try {
+    const s = await getJSON('/api/summary?' + params());
+    if (my !== ticket) return;
+    $('summary').className = ''; $('summary').textContent = s.text;
+    $('engine').textContent = s.engine === 'none' ? '' : `via ${s.engine}`;
+  } catch (e) { if (my === ticket) $('summary').textContent = e.message; }
 }
 
-$('lang').addEventListener('change', () => loadSummary(`?date=${$('date').value}&hour=${$('hour').value}`, pending));
+async function place(input, marker) {
+  try {
+    const hit = await getJSON('/api/geocode?q=' + encodeURIComponent(input.value));
+    marker.setLatLng([hit.lat, hit.lon]); input.value = hit.label.split(',')[0];
+    return true;
+  } catch (e) { toast(e.message); return false; }
+}
+
+$('trip').addEventListener('submit', async (e) => {
+  e.preventDefault(); document.activeElement.blur();
+  if (await place($('from'), startPin) && await place($('to'), endPin)) { custom = true; update(true); }
+});
+$('swap').onclick = () => {
+  const a = startPin.getLatLng(), b = endPin.getLatLng(); startPin.setLatLng(b); endPin.setLatLng(a);
+  [$('from').value, $('to').value] = [$('to').value, $('from').value]; custom = true; update(true);
+};
+for (const [m, input] of [[startPin, 'from'], [endPin, 'to']]) {
+  m.on('dragend', () => { custom = true; $(input).value = 'Dropped pin'; update(true); });
+}
 let t;
-$('hour').addEventListener('input', () => { $('clock').textContent = fmtHour(+$('hour').value); clearTimeout(t); t = setTimeout(update, 150); });
-$('date').addEventListener('change', update);
-update();
+$('hour').addEventListener('input', () => { $('clock').textContent = fmtHour(+$('hour').value); clearTimeout(t); t = setTimeout(() => update(false), 200); });
+document.querySelectorAll('.lang').forEach((b) => b.onclick = () => {
+  lang = b.dataset.lang; document.querySelectorAll('.lang').forEach((x) => x.classList.toggle('on', x === b)); loadSummary(ticket);
+});
+
+function addMsg(role, text, engine) {
+  const d = document.createElement('div'); d.className = 'msg ' + role; d.textContent = text;
+  if (engine) { const s = document.createElement('small'); s.textContent = 'via ' + engine; d.appendChild(s); }
+  $('msgs').appendChild(d); $('msgs').scrollTop = 1e9; return d;
+}
+async function ask(q) {
+  if (!q.trim()) return;
+  addMsg('user', q); const wait = addMsg('gemma', '…');
+  try {
+    const a = await getJSON('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...Object.fromEntries(params()), question: q, history }) });
+    wait.remove(); addMsg('gemma', a.text, a.engine);
+    history.push({ role: 'user', text: q }, { role: 'gemma', text: a.text });
+  } catch (e) { wait.textContent = e.message; }
+}
+$('openchat').onclick = () => {
+  $('chat').classList.add('open');
+  if (!$('msgs').children.length) addMsg('gemma', 'Hi! Ask me anything about these routes: shade, lighting, places to stop or when to leave.');
+  $('q').focus();
+};
+$('closechat').onclick = () => $('chat').classList.remove('open');
+$('compose').addEventListener('submit', (e) => { e.preventDefault(); const q = $('q').value; $('q').value = ''; ask(q); });
+document.querySelectorAll('.suggest button').forEach((b) => b.onclick = () => ask(b.dataset.q));
+
+update(true);
 </script>
 </body>
 </html>
