@@ -245,9 +245,9 @@ function draw() {
 function render() {
   const day = last.daylight;
   document.body.classList.toggle('night', !day);
-  const busy = goal === 'busy';
+  const busy = (last.goal || goal) === 'busy';  // server ranks by busy streets after dark even in auto
   $('mode').textContent = busy ? 'Busy streets · storefronts + traffic' : day ? 'Day · least sun' : 'Night · lit & busy';
-  $('goalchip').textContent = day ? 'Shadiest' : 'Brightest';
+  $('goalchip').textContent = day ? 'Shadiest' : 'Busy & lit';
   $('chatctx').textContent = `Gemma 4 · ${busy ? 'Busiest · ' : ''}${last.recommended} · ${fmtHour(+$('hour').value)}`;
   // Same busy score the server ranks by (storefronts x10 + cars/day / 100), so the winner has the fullest bar.
   const busyScore = (r) => (+r.storefronts_per_km || 0) * 10 + (+r.traffic_aadt || 0) / 100;

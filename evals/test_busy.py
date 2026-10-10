@@ -14,7 +14,11 @@ def test_busy_payload():
     assert p["goal"] == "busy" and p["recommended"] in {r["name"] for r in p["routes"]}
     for r in p["routes"]:
         assert r["storefronts_per_km"] > 0 and isinstance(r["traffic_aadt"], int)
-    assert "storefronts/km" in _route_lines(p)
+    assert "storefronts/mile" in _route_lines(p)
+
+
+def test_night_ranks_busy():
+    assert _rank({"hour": "21"})["goal"] == "busy"
 
 
 def test_invalid_goal_is_auto():

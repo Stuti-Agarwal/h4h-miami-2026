@@ -81,6 +81,8 @@ def _rank(args):
     scored = [{"name": n, "geometry": r["geometry"], **scorer.score(r["geometry"]["coordinates"], when)}
               for n, r in _routes(args).items()]
     day = scored[0]["daylight"]
+    if not day:  # after dark, busy streets (storefronts, passing cars) are the safety signal, so auto ranks as busy
+        goal = "busy"
     base = "sun_exposed_m" if day else "longest_dark_m"
     scored.sort(key=lambda r: _key(r, goal, base))
     return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "goal": goal,
