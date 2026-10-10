@@ -14,7 +14,7 @@ Finds the shadiest walking route across Miami for a given time of day. Each cand
 
 ## Tech stack
 
-_TBD_
+Python · Flask · Shapely · SunCalc · Leaflet + OpenStreetMap tiles · Gemma 4 via the Gemini API
 
 ## Data sources
 
@@ -29,9 +29,11 @@ _TBD_
 
 ```bash
 cp .env.example .env   # add your GEMINI_API_KEY
+python -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m app.server   # http://localhost:5050
 ```
 
-_TBD_
+`data/` is committed, so no downloads are needed. To refresh it: `python scripts/fetch_overture.py && python scripts/fetch_county.py`.
 
 ## Team
 
