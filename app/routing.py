@@ -1,4 +1,5 @@
-"""Candidate walking routes between two points (FOSSGIS OSRM foot profile) and address search (Nominatim)."""
+"""Candidate walking routes (FOSSGIS OSRM foot profile), address search (Nominatim) and type-ahead suggestions (Photon)."""
+import json
 import math
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
@@ -91,3 +92,43 @@ def geocode(query):
     if not hits:
         return None
     return {"lon": float(hits[0]["lon"]), "lat": float(hits[0]["lat"]), "label": hits[0]["display_name"].split(", Miami")[0]}
+
+
+PHOTON = "https://photon.komoot.io/api/"
+
+
+def _photon_label(p):
+    street = " ".join(x for x in (p.get("housenumber"), p.get("street")) if x)
+    return _abbrev(p.get("name") or street), _abbrev(street if p.get("name") else (p.get("district") or p.get("city") or "Miami"))
+
+
+def suggest(query, local_places):
+    """Up to 6 {label, detail, lon, lat}: strong local name matches first (instant, in-area), then Photon addresses.
+    local_places: (name, category, geojson, tier) rows from scoring.search_places. Weak local 'contains' matches
+    (tier 4) go last, and also below Photon for address-like queries (starting with a digit, e.g. "300 SW 2nd")."""
+    strong, weak = [], []
+    for name, category, geom, tier in local_places:
+        lon, lat = json.loads(geom)["coordinates"][:2]
+        (strong if tier <= 3 else weak).append(
+            {"label": name, "detail": (category or "place").replace("_", " "), "lon": lon, "lat": lat})
+    photon = []
+    try:
+        r = requests.get(PHOTON, params={"q": query, "limit": 6, "bbox": ",".join(map(str, BBOX))}, headers=HEADERS, timeout=4)
+        r.raise_for_status()
+        for f in r.json()["features"]:
+            lon, lat = f["geometry"]["coordinates"][:2]
+            label, detail = _photon_label(f["properties"])
+            if label and label.strip() and in_bbox(lon, lat):
+                photon.append({"label": label.strip(), "detail": detail, "lon": lon, "lat": lat})
+    except (requests.RequestException, KeyError, ValueError):
+        pass  # local suggestions still work offline
+    qn = " ".join(query.lower().split())
+    photon.sort(key=lambda s: not s["label"].lower().startswith(qn))  # e.g. "300 SW 2nd Ave" before "300 NE 2nd Ave"
+    ordered = strong + (photon + weak if query.strip()[:1].isdigit() else weak + photon)
+    out, seen = [], set()
+    for s in ordered:
+        key = " ".join(s["label"].lower().split())
+        if key not in seen:
+            seen.add(key)
+            out.append(s)
+    return out[:6]

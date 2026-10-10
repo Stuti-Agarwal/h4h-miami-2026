@@ -10,8 +10,8 @@ from shapely import LineString, unary_union
 load_dotenv()
 
 from app.gemma import chat, summarize  # noqa: E402
-from app.routing import candidates, geocode, in_bbox  # noqa: E402
-from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, to_m  # noqa: E402
+from app.routing import candidates, geocode, in_bbox, suggest  # noqa: E402
+from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, search_places, to_m  # noqa: E402
 
 MIAMI = ZoneInfo("America/New_York")
 LANGS = ("English", "Spanish", "Haitian Creole")
@@ -117,6 +117,14 @@ def search():
     if not hit:
         raise BadRequest(f"Couldn't find '{q}' in Downtown–Wynwood.")
     return jsonify(hit)
+
+
+@app.get("/api/suggest")
+def suggestions():
+    q = request.args.get("q", "").strip()[:80]
+    if len(q) < 2:
+        return jsonify([])
+    return jsonify(suggest(q, search_places(q)))
 
 
 @app.get("/api/shadows")

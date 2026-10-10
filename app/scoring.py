@@ -38,21 +38,67 @@ COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category",
 
 
 def _query(sqlite_sql, postgis_sql):
-    """Rows from Supabase when SUPABASE_DB_URL is set, else from the local SQLite db."""
+    """Rows from Supabase when SUPABASE_DB_URL is set, else from the local SQLite db.
+    Each sql is a string or a (sql, params) tuple; params are always bound, never formatted in."""
     url = os.environ.get("SUPABASE_DB_URL")
     if url:
         import psycopg
 
+        sql, params = postgis_sql if isinstance(postgis_sql, tuple) else (postgis_sql, ())
         with psycopg.connect(url) as conn:
-            return conn.execute(postgis_sql).fetchall()
+            return conn.execute(sql, params).fetchall()
+    sql, params = sqlite_sql if isinstance(sqlite_sql, tuple) else (sqlite_sql, ())
     with sqlite3.connect(DB) as conn:
-        return conn.execute(sqlite_sql).fetchall()
+        return conn.execute(sql, params).fetchall()
 
 
 def _load(name):
     cols = "".join(", " + c for c in COLUMNS[name])
     rows = _query(f"select geom{cols} from {name}", f"select ST_AsGeoJSON(geom){cols} from {name}")
     return [{"geometry": json.loads(r[0]), "properties": dict(zip(COLUMNS[name], r[1:]))} for r in rows]
+
+
+# Landmarks people navigate to rank above offices that happen to share a name.
+_GOOD_CATEGORIES = ("park", "museum", "monument", "historic_site", "art_gallery", "arts_and_entertainment",
+                    "performing_arts_venue", "theatre_venue", "music_venue", "event_venue", "festival_venue",
+                    "stadium_arena", "public_plaza", "beach", "library", "train_station", "hotel", "lodging",
+                    "restaurant", "casual_eatery", "cafe", "coffee_shop", "bar", "college_university",
+                    "amusement_attraction", "movie_theater")
+_OFFICE_CATEGORIES = ("technical_service", "real_estate_service", "professional_service", "financial_service",
+                      "legal_service", "attorney_or_law_firm", "corporate_or_business_office",
+                      "b2b_office_and_professional_service", "b2b_service", "home_service", "media_service",
+                      "design_service", "building_or_construction_service")
+
+
+def search_places(text, limit=4):
+    """Named places matching every word of text, as (name, category, geojson, tier) rows.
+    Tier 1 exact name, 2 name starts with text as whole word(s), 3 some word starts with text, 4 contains.
+    A leading "The" in the name is ignored for tiers 1-2. Within a tier: landmarks, then others, then offices,
+    then confidence. User text only ever goes in as bound parameters (LIKE wildcards escaped)."""
+    q = " ".join(text.split())
+    esc = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    words = [w.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") for w in q.split()] or [""]
+    good, office = ",".join("?" * len(_GOOD_CATEGORIES)), ",".join("?" * len(_OFFICE_CATEGORIES))
+    sql = ("select name, category, {geom}, case "
+           "when lower(name) in (lower(?), lower(?)) then 1 "
+           "when name {like} ? escape '\\' or name {like} ? escape '\\' then 2 "
+           "when name {like} ? escape '\\' or name {like} ? escape '\\' then 3 else 4 end as tier "
+           "from places where confidence >= 0.6 and "
+           + " and ".join(["name {like} ? escape '\\'"] * len(words))
+           + f" order by tier, case when category in ({good}) then 0 when category in ({office}) then 2 else 1 end, "
+           "confidence desc limit ?")
+    params = (q, "the " + q, esc + " %", "the " + esc + " %", esc + "%", "% " + esc + "%",
+              *(f"%{w}%" for w in words), *_GOOD_CATEGORIES, *_OFFICE_CATEGORIES, limit * 4)
+    rows = _query(
+        (sql.format(geom="geom", like="like"), params),
+        (sql.format(geom="ST_AsGeoJSON(geom)", like="ilike").replace("?", "%s"), params),
+    )
+    out, seen = [], set()
+    for r in rows:  # one row per name (chains like Publix have many branches), so the slots show distinct places
+        if r[0].lower() not in seen:
+            seen.add(r[0].lower())
+            out.append(r)
+    return out[:limit]
 
 
 def load_routes():
