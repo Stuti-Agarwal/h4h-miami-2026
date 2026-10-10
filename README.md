@@ -33,6 +33,11 @@ Python · Flask · SQLite (Supabase/PostGIS ready) · Shapely · SunCalc · Leaf
 - [Miami-Dade Street Light Inventory](https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/StreetLightInventory_gdb/FeatureServer) — county-maintained lights
 - [Miami-Dade bus stops](https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/Bus_Stop_Maintenance_View_Layer/FeatureServer)
 - OpenStreetMap street lamps and `lit=yes` streets via Overpass — night lighting
+- OpenStreetMap elevated motorway/trunk bridges (I-95, I-395, SR 836) via Overpass — metres walked under highways
+- [City of Miami Police "Crimes (Public)"](https://services1.arcgis.com/CvuPhqcTQpZPT9qY/arcgis/rest/services/Crimes_public_67c0535145c14baf897e47a8d4986539/FeatureServer/0) via the City of Miami Open Data GIS Hub — reported incidents against people near each route, last 12 months (block-level; shown only as a per-route rate, never as a neighborhood map)
+- Overture places (police/fire stations, hospitals, hotels, pharmacies, 24h stores) — "safe stops" along the route
+- Miami-Dade Traffic Cameras + OpenStreetMap `man_made=surveillance` — collected in `data/cameras.geojson` but not scored (54 points, mostly highway CCTV and plate readers: too sparse for street-level coverage)
+- [Photon](https://photon.komoot.io) (OpenStreetMap) — address type-ahead suggestions
 - [OpenStreetMap](https://www.openstreetmap.org/copyright) — street network and basemap; walking routes via [FOSSGIS OSRM](https://routing.openstreetmap.de/)
 
 ## Running locally
