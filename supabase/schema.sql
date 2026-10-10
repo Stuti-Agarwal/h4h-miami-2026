@@ -36,6 +36,12 @@ create table if not exists incidents (  -- City of Miami PD reported crimes, geo
   category text,
   date text
 );
+create table if not exists traffic (  -- FDOT Annual Average Daily Traffic segments (lines), expressways excluded
+  id bigserial primary key,
+  geom geometry(Geometry, 4326) not null,
+  aadt int,
+  road text
+);
 create table if not exists routes (
   name text primary key,
   distance_m int not null,
@@ -49,3 +55,4 @@ create index if not exists stops_geom on stops using gist (geom);
 create index if not exists osm_lit_geom on osm_lit using gist (geom);
 create index if not exists highways_geom on highways using gist (geom);
 create index if not exists incidents_geom on incidents using gist (geom);
+create index if not exists traffic_geom on traffic using gist (geom);

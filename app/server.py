@@ -14,6 +14,7 @@ from app.routing import candidates, geocode, in_bbox, suggest  # noqa: E402
 from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, search_places, to_m  # noqa: E402
 
 INCIDENT_W = 20  # routes run 25-64/km; +5/km = 100 m flips a close call, a ~900 m shade lead survives 2x the rate
+GOALS = ("auto", "busy")
 MIAMI = ZoneInfo("America/New_York")
 LANGS = ("English", "Spanish", "Haitian Creole")
 app = Flask(__name__, static_folder="static")
@@ -58,16 +59,32 @@ def _routes(args):
     return found
 
 
+def _goal(args):
+    goal = args.get("goal", "auto")
+    return goal if goal in GOALS else "auto"
+
+
+def _key(r, goal, base):
+    """Sort key, lower is better. auto: 1 m under an elevated highway weighs like 4 m of sun (day) or of dark
+    stretch (night); 1 reported incident against people per km weighs like INCIDENT_W m of sun / dark stretch.
+    busy: 1 storefront/km and 1000 cars/day each = 10 points = 2.5 m under a highway. Demo routes span 28-35
+    storefronts/km (~60 pts) and 8.3k-12.5k cars/day (~40 pts); at aadt/1000 traffic spanned only 4 pts and never
+    mattered. Same highway and incident penalties."""
+    penalty = 4 * r["under_highway_m"] + INCIDENT_W * r["incidents_per_km"]
+    if goal == "busy":
+        return -(r["storefronts_per_km"] * 10 + r["traffic_aadt"] / 100) + penalty
+    return r[base] + penalty
+
+
 def _rank(args):
-    when = _when(args)
+    when, goal = _when(args), _goal(args)
     scored = [{"name": n, "geometry": r["geometry"], **scorer.score(r["geometry"]["coordinates"], when)}
               for n, r in _routes(args).items()]
     day = scored[0]["daylight"]
-    # 1 m under an elevated highway weighs like 4 m of sun (day) or of dark stretch (night).
-    # 1 reported incident against people per km weighs like INCIDENT_W m of sun / dark stretch.
     base = "sun_exposed_m" if day else "longest_dark_m"
-    scored.sort(key=lambda r: r[base] + 4 * r["under_highway_m"] + INCIDENT_W * r["incidents_per_km"])
-    return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "recommended": scored[0]["name"], "routes": scored}
+    scored.sort(key=lambda r: _key(r, goal, base))
+    return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "goal": goal,
+            "recommended": scored[0]["name"], "routes": scored}
 
 
 def _lang(args):

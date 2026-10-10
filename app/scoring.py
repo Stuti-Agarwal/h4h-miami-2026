@@ -22,6 +22,7 @@ TREE = 6
 STEP_M = 10
 LIT_M, LIT_WAY_M, ACTIVE_M, ACTIVE_MIN, TRANSIT_M = 30, 15, 50, 3, 100
 INCIDENT_M, SAFE_STOP_M, MAX_SAFE_STOPS = 30, 40, 8
+STOREFRONT_M, TRAFFIC_M = 30, 25
 UNDER_HIGHWAY_M = 15  # within this of an elevated motorway/trunk centreline = walking under it
 MAX_SHADOW_M = 300
 # Places likely open after dark; offices/services count only by day.
@@ -36,11 +37,24 @@ SAFE_STOP = {"police_station", "fire_station", "hospital", "pharmacy_and_drug_st
              "hotel", "convenience_store", "gas_station"}
 
 
+# Street-level shops, food, drink and personal services (Overture categories); offices are excluded.
+STOREFRONT = {
+    "restaurant", "casual_eatery", "fast_food_restaurant", "cafe", "coffee_shop", "bar", "lounge", "brewery",
+    "smoothie_juice_bar", "food_truck_stand", "food_court", "food_service", "food_and_drink", "food_and_beverage_store",
+    "convenience_store", "farmers_market", "market", "fashion_and_apparel_store", "personal_or_beauty_service",
+    "personal_care_and_beauty_store", "pharmacy_and_drug_store", "specialty_store", "shopping", "shopping_mall",
+    "department_store", "discount_store", "electronics_store", "sporting_goods_store", "flowers_and_gifts_store",
+    "arts_crafts_and_hobby_store", "second_hand_store", "hardware_home_and_garden_store", "books_music_and_video_store",
+    "animal_and_pet_store", "toys_and_games_store", "office_supply_store", "vehicle_parts_store", "laundry_service",
+    "art_gallery",
+}
+
+
 def to_m(lon, lat):
     return (lon - BBOX[0]) * M_PER_DEG_LON, (lat - BBOX[1]) * M_PER_DEG_LAT
 
 
-COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": [], "osm_lit": [], "highways": [], "incidents": ["category", "date"]}
+COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": [], "osm_lit": [], "highways": [], "incidents": ["category", "date"], "traffic": ["aadt", "road"]}
 
 
 def _query(sqlite_sql, postgis_sql):
@@ -152,6 +166,10 @@ class Scorer:
                                  for f in _load("highways")])
         self.places = STRtree(_points(places))
         self.evening_places = STRtree(_points([f for f in places if f["properties"].get("category") in EVENING]))
+        self.storefronts = STRtree(_points([f for f in places if f["properties"].get("category") in STOREFRONT]))
+        traffic = _load("traffic")
+        self.traffic = STRtree([LineString([to_m(x, y) for x, y in f["geometry"]["coordinates"]]) for f in traffic])
+        self.aadt = [f["properties"]["aadt"] for f in traffic]
         self.stops = STRtree(_points(_load("stops")))
         self.incidents = STRtree(_points([f for f in _load("incidents") if f["properties"].get("category") == "Person"]))
         self.safe_stops = [f for f in places if f["properties"].get("category") in SAFE_STOP]
@@ -205,6 +223,10 @@ class Scorer:
         hits = [set(self.incidents.query(p, predicate="dwithin", distance=INCIDENT_M).tolist()) for p in samples]
         incident = [bool(h) for h in hits]
         n_incidents = len(set().union(*hits))
+        shops = set().union(*(self.storefronts.query(p, predicate="dwithin", distance=STOREFRONT_M).tolist()
+                              for p in samples))
+        aadt = [self.aadt[i[0]] if i.size else 0
+                for i in (self.traffic.query_nearest(p, max_distance=TRAFFIC_M) for p in samples)]
 
         dark, longest_dark = 0, 0
         for l, a, u in zip(lit, active, under):
@@ -225,6 +247,8 @@ class Scorer:
             "longest_dark_m": longest_dark * STEP_M,
             "under_highway_m": sum(under) * STEP_M,
             "incidents_per_km": round(n_incidents / max(line.length / 1000, 0.01), 1),  # Person-category police reports
+            "storefronts_per_km": round(len(shops) / max(line.length / 1000, 0.01), 1),
+            "traffic_aadt": round(sum(aadt) / len(aadt)),  # samples are evenly spaced, so this is length-weighted
             "safe_stops": self._safe_stops(line),
             "samples": [{"lon": round(x, 6), "lat": round(y, 6), "shaded": s, "lit": l, "active": a, "under": u,
                          "incident": i}

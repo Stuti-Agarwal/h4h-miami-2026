@@ -16,6 +16,7 @@ COLUMNS = {
     "osm_lit": [],
     "highways": [],
     "incidents": ["category", "date"],
+    "traffic": ["aadt", "road"],
 }
 
 
