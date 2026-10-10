@@ -5,12 +5,13 @@ from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
+from shapely import LineString, unary_union
 
 load_dotenv()
 
 from app.gemma import chat, summarize  # noqa: E402
 from app.routing import candidates, geocode, in_bbox  # noqa: E402
-from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes  # noqa: E402
+from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, to_m  # noqa: E402
 
 MIAMI = ZoneInfo("America/New_York")
 LANGS = ("English", "Spanish", "Haitian Creole")
@@ -123,10 +124,14 @@ def shadows():
     tree = scorer.shadows(_when(request.args))
     if tree is None:
         return jsonify({"type": "FeatureCollection", "features": []})
+    # Only shadows near the routes on screen: the whole demo area is ~3.4 MB per slider move.
+    near = unary_union([LineString([to_m(x, y) for x, y in r["geometry"]["coordinates"]]).buffer(80)
+                        for r in _routes(request.args).values()])
     features = [{"type": "Feature", "properties": {},
                  "geometry": {"type": "Polygon",
                               "coordinates": [[_to_lonlat(x, y) for x, y in p.simplify(2).exterior.coords]]}}
-                for p in tree.geometries if not math.isnan(p.area) and p.area > 0]
+                for p in tree.geometries[tree.query(near, predicate="intersects")]
+                if not math.isnan(p.area) and p.area > 0]
     return jsonify({"type": "FeatureCollection", "features": features})
 
 
