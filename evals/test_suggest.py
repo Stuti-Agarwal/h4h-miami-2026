@@ -50,3 +50,7 @@ def test_injection_like_input_is_inert(q):
 def test_wildcards_are_literal():
     assert all("%" in n for n in names("%"))  # '%' matches only names containing a literal '%'
     assert all("_" in n for n in names("_"))
+
+
+def test_lab_puts_the_lab_miami_first():
+    assert search_places("lab")[0][0] == "The LAB Miami"

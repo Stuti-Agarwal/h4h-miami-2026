@@ -65,6 +65,8 @@ _GOOD_CATEGORIES = ("park", "museum", "monument", "historic_site", "art_gallery"
                     "stadium_arena", "public_plaza", "beach", "library", "train_station", "hotel", "lodging",
                     "restaurant", "casual_eatery", "cafe", "coffee_shop", "bar", "college_university",
                     "amusement_attraction", "movie_theater")
+# Venues people search for that Overture files under office categories (The LAB is "real_estate_service").
+_FEATURED = ("the lab miami",)
 _OFFICE_CATEGORIES = ("technical_service", "real_estate_service", "professional_service", "financial_service",
                       "legal_service", "attorney_or_law_firm", "corporate_or_business_office",
                       "b2b_office_and_professional_service", "b2b_service", "home_service", "media_service",
@@ -86,10 +88,11 @@ def search_places(text, limit=4):
            "when name {like} ? escape '\\' or name {like} ? escape '\\' then 3 else 4 end as tier "
            "from places where confidence >= 0.6 and "
            + " and ".join(["name {like} ? escape '\\'"] * len(words))
-           + f" order by tier, case when category in ({good}) then 0 when category in ({office}) then 2 else 1 end, "
+           + f" order by tier, case when lower(name) in ({','.join('?' * len(_FEATURED))}) then -1 "
+           f"when category in ({good}) then 0 when category in ({office}) then 2 else 1 end, "
            "confidence desc limit ?")
     params = (q, "the " + q, esc + " %", "the " + esc + " %", esc + "%", "% " + esc + "%",
-              *(f"%{w}%" for w in words), *_GOOD_CATEGORIES, *_OFFICE_CATEGORIES, limit * 4)
+              *(f"%{w}%" for w in words), *_FEATURED, *_GOOD_CATEGORIES, *_OFFICE_CATEGORIES, limit * 4)
     rows = _query(
         (sql.format(geom="geom", like="like"), params),
         (sql.format(geom="ST_AsGeoJSON(geom)", like="ilike").replace("?", "%s"), params),
