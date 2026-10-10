@@ -13,3 +13,5 @@ build/
 .archify/
 .gstack/
 .claude/
+evals/results/
+data/cameras.geojson
