@@ -89,7 +89,5 @@
   document.querySelectorAll('.lang').forEach((b) => b.addEventListener('click', () => { if (!ob.hidden) render(b.dataset.lang); }));
   // The overlay covers the sheet's buttons, so mirror them in the card (clicks the real one).
   document.querySelectorAll('#oblangs button').forEach((b) => b.onclick = () => { const r = document.querySelector(`.lang[data-lang="${b.dataset.lang}"]`); if (r) r.click(); });
-  let seen = false;
-  try { seen = localStorage.getItem('sombra_onboarded') === '1'; } catch (e) { /* storage blocked: treat as first visit */ }
-  if (!seen) open();
+  open();  // shown on every page load (demo); the ? button reopens it
 })();
