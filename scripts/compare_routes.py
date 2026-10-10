@@ -16,13 +16,13 @@ scorer = Scorer()
 routes = json.loads((DATA / "routes.json").read_text())
 for day in DAYS:
     print(f"\n=== {datetime(*day):%b %d}")
-    print(f"{'route':14} {'m':>5} " + " ".join(f"{h:>2}h shade(bld/tree)" for h in HOURS[:3]) + "  21h lit/active/dark")
+    print(f"{'route':14} {'m':>5} " + " ".join(f"{h:>2}h sun m (shade%)" for h in HOURS[:3]) + "  21h lit*/active/dark")
     for name, r in routes.items():
         cells = []
         for h in HOURS:
             s = scorer.score(r["geometry"]["coordinates"], datetime(*day, h, tzinfo=MIAMI))
             if s["daylight"]:
-                cells.append(f"{s['shade']:>5.0%} ({s['building_shade']:.0%}/{s['tree_shade']:.0%})")
+                cells.append(f"{s['sun_exposed_m']:>5}m sun ({s['shade']:.0%})")
             else:
                 cells.append(f"{s['lit']:.0%}/{s['active']:.0%}/{s['longest_dark_m']}m")
         print(f"{name:14} {s['distance_m']:>5} " + "  ".join(f"{c:>18}" for c in cells))

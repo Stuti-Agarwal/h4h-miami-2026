@@ -19,6 +19,12 @@ TREE = 6
 STEP_M = 10
 LIT_M, ACTIVE_M, ACTIVE_MIN, TRANSIT_M = 30, 50, 3, 100
 MAX_SHADOW_M = 300
+# Places likely open after dark; offices/services count only by day.
+EVENING = {
+    "restaurant", "fast_food_restaurant", "bar", "lounge", "nightlife_venue", "dance_club", "music_venue",
+    "brewery", "cafe", "coffee_shop", "food_truck_stand", "food_court", "convenience_store",
+    "food_and_beverage_store", "pharmacy_and_drug_store", "gas_station", "hotel", "lodging", "movie_theater",
+}
 
 
 def to_m(lon, lat):
@@ -58,6 +64,7 @@ class Scorer:
         places = [f for f in _load("places") if (f["properties"].get("confidence") or 0) >= 0.6]
         self.lights = STRtree(_points(_load("lights")))
         self.places = STRtree(_points(places))
+        self.evening_places = STRtree(_points([f for f in places if f["properties"].get("category") in EVENING]))
         self.stops = STRtree(_points(_load("stops")))
         self.landcover = np.array(Image.open(DATA / "landcover.tif"))
 
@@ -99,7 +106,8 @@ class Scorer:
             in_bldg = in_tree = shaded = [False] * len(samples)
 
         lit = [len(self.lights.query(p, predicate="dwithin", distance=LIT_M)) > 0 for p in samples]
-        active = [len(self.places.query(p, predicate="dwithin", distance=ACTIVE_M)) >= ACTIVE_MIN for p in samples]
+        places = self.places if shadows is not None else self.evening_places
+        active = [len(places.query(p, predicate="dwithin", distance=ACTIVE_M)) >= ACTIVE_MIN for p in samples]
         transit = [len(self.stops.query(p, predicate="dwithin", distance=TRANSIT_M)) > 0 for p in samples]
 
         dark, longest_dark = 0, 0
@@ -114,7 +122,8 @@ class Scorer:
             "shade": frac(shaded),
             "building_shade": frac(in_bldg),
             "tree_shade": frac(in_tree),
-            "lit": frac(lit),
+            "sun_exposed_m": round(line.length * (1 - frac(shaded))),
+            "lit": frac(lit),  # county-maintained lights only; city/FPL lights are missing
             "active": frac(active),
             "transit": frac(transit),
             "longest_dark_m": longest_dark * STEP_M,
