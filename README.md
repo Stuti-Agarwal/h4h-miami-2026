@@ -20,7 +20,10 @@ _TBD_
 
 - [Overture Maps buildings](https://docs.overturemaps.org/guides/buildings/) (release 2026-09-23.1) — footprints and heights; includes © OpenStreetMap contributors, ODbL
 - [Miami-Dade 2021 Urban Tree Canopy land cover](https://gisweb.miamidade.gov/arcgis/rest/services/UrbanTreeCanopy/LandCover_2021/ImageServer) — 2 m land-cover classes
-- [OpenStreetMap](https://www.openstreetmap.org/copyright) — street network and basemap
+- [Overture Maps places](https://docs.overturemaps.org/guides/places/) (release 2026-09-23.1) — businesses, used for street activity
+- [Miami-Dade Street Light Inventory](https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/StreetLightInventory_gdb/FeatureServer) — county-maintained lights
+- [Miami-Dade bus stops](https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/Bus_Stop_Maintenance_View_Layer/FeatureServer)
+- [OpenStreetMap](https://www.openstreetmap.org/copyright) — street network and basemap; walking routes via [FOSSGIS OSRM](https://routing.openstreetmap.de/)
 
 ## Running locally
 
