@@ -1,0 +1,425 @@
+{
+"type": "FeatureCollection",
+"features": [
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.195264,
+25.762669
+]
+},
+"properties": {
+"name": "Brickell Station",
+"kind": "metromover",
+"routes": "Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.190793,
+25.78487
+]
+},
+"properties": {
+"name": "Eleventh Street Station",
+"kind": "metromover",
+"routes": "Omni Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.19057,
+25.780549
+]
+},
+"properties": {
+"name": "Freedom Tower Station",
+"kind": "metromover",
+"routes": "Omni Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.190646,
+25.782481
+]
+},
+"properties": {
+"name": "Miami Worldcenter Station",
+"kind": "metromover",
+"routes": "Omni Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.192252,
+25.76917
+]
+},
+"properties": {
+"name": "Fifth Street Station",
+"kind": "metromover",
+"routes": "Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.187938,
+25.785923
+]
+},
+"properties": {
+"name": "Museum Park Station",
+"kind": "metromover",
+"routes": "Omni Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.192125,
+25.766892
+]
+},
+"properties": {
+"name": "Eighth Street Station",
+"kind": "metromover",
+"routes": "Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.195344,
+25.77882
+]
+},
+"properties": {
+"name": "Wilkie D. Ferguson, Jr. Station",
+"kind": "metromover",
+"routes": "Inner Loop, Omni Loop, Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.189852,
+25.77573
+]
+},
+"properties": {
+"name": "First Street Station",
+"kind": "metromover",
+"routes": "Inner Loop, Omni Loop, Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.193148,
+25.78938
+]
+},
+"properties": {
+"name": "School Board Station",
+"kind": "metromover",
+"routes": "Omni Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.187326,
+25.773104
+]
+},
+"properties": {
+"name": "Bayfront Park Station",
+"kind": "metromover",
+"routes": "Inner Loop, Omni Loop, Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.192564,
+25.764021
+]
+},
+"properties": {
+"name": "Tenth Street/Promenade Station",
+"kind": "metromover",
+"routes": "Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.196097,
+25.775869
+]
+},
+"properties": {
+"name": "Government Center Station",
+"kind": "metromover",
+"routes": "Inner Loop, Omni Loop, Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.191381,
+25.77187
+]
+},
+"properties": {
+"name": "Knight Center Station",
+"kind": "metromover",
+"routes": "Inner Loop, Omni Loop, Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.188001,
+25.789461
+]
+},
+"properties": {
+"name": "Adrienne Arsht Center Station",
+"kind": "metromover",
+"routes": "Omni Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.192561,
+25.771056
+]
+},
+"properties": {
+"name": "Riverwalk Station",
+"kind": "metromover",
+"routes": "Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.192884,
+25.760386
+]
+},
+"properties": {
+"name": "Financial District Station",
+"kind": "metromover",
+"routes": "Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.189918,
+25.777588
+]
+},
+"properties": {
+"name": "College/Bayside Station",
+"kind": "metromover",
+"routes": "Inner Loop, Omni Loop, Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.193511,
+25.772028
+]
+},
+"properties": {
+"name": "Third Street Station",
+"kind": "metromover",
+"routes": "Omni Loop, Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.193585,
+25.773395
+]
+},
+"properties": {
+"name": "Miami Avenue Station",
+"kind": "metromover",
+"routes": "Inner Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.192089,
+25.778931
+]
+},
+"properties": {
+"name": "College North Station",
+"kind": "metromover",
+"routes": "Inner Loop, Omni Loop, Brickell Loop"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.215036,
+25.789676
+]
+},
+"properties": {
+"name": "Uhealth / Jackson Station",
+"kind": "metrorail",
+"routes": "Green, Orange"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.195465,
+25.763825
+]
+},
+"properties": {
+"name": "Brickell Station",
+"kind": "metrorail",
+"routes": "Green, Orange"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.215206,
+25.795806
+]
+},
+"properties": {
+"name": "Santa Clara Station",
+"kind": "metrorail",
+"routes": "Green, Orange"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.196285,
+25.780999
+]
+},
+"properties": {
+"name": "Historic Overtown/Lyric Theatre Station",
+"kind": "metrorail",
+"routes": "Green, Orange"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.215465,
+25.808699
+]
+},
+"properties": {
+"name": "Allapattah Station",
+"kind": "metrorail",
+"routes": "Green, Orange"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.196101,
+25.776043
+]
+},
+"properties": {
+"name": "Government Center Station",
+"kind": "metrorail",
+"routes": "Green, Orange"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-80.207546,
+25.78456
+]
+},
+"properties": {
+"name": "Culmer Station",
+"kind": "metrorail",
+"routes": "Green, Orange"
+}
+}
+]
+}

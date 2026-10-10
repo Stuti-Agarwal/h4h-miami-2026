@@ -7,7 +7,7 @@ from functools import lru_cache
 import requests
 from shapely import LineString
 
-from app.scoring import BBOX, to_m
+from app.scoring import BBOX, DATA, to_m
 
 OSRM = "https://routing.openstreetmap.de/routed-foot/route/v1/foot/"
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
@@ -141,3 +141,39 @@ def suggest(query, local_places, remote=True):
             seen.add(key)
             out.append(s)
     return out[:6]
+
+
+TRANSIT_MAX_M = 800
+DETOUR = 1.25  # straight-line -> walking distance
+
+
+@lru_cache(maxsize=1)
+def _transit_stops():
+    """Metromover/Metrorail stations (Miami-Dade open data, data/stations.geojson) + bus stops (data/stops.geojson)."""
+    stops = [{**f["properties"], "lon": f["geometry"]["coordinates"][0], "lat": f["geometry"]["coordinates"][1]}
+             for f in json.loads((DATA / "stations.geojson").read_text())["features"]]
+    for f in json.loads((DATA / "stops.geojson").read_text())["features"]:
+        x, y = f["geometry"]["coordinates"][:2]
+        stops.append({"name": f["properties"].get("StopName") or "Bus stop", "kind": "bus", "routes": "",
+                      "lon": round(x, 6), "lat": round(y, 6)})
+    return stops
+
+
+def nearest_transit(lon, lat, n=3):
+    """Up to n stops within TRANSIT_MAX_M straight-line of (lon, lat), sorted by walk_m; keeps the nearest
+    rail/mover station in the list if one is in range."""
+    px, py = to_m(lon, lat)
+    near = []
+    for s in _transit_stops():
+        x, y = to_m(s["lon"], s["lat"])
+        d = math.hypot(x - px, y - py)
+        if d <= TRANSIT_MAX_M:
+            near.append({**s, "walk_m": round(d * DETOUR)})
+    near.sort(key=lambda s: s["walk_m"])
+    seen = set()  # bus stops come in pairs (one per side of the street); keep the nearer of each name
+    near = [s for s in near if not ((s["name"], s["kind"]) in seen or seen.add((s["name"], s["kind"])))]
+    top = near[:n]
+    station = next((s for s in near if s["kind"] != "bus"), None)
+    if station and station not in top and top:
+        top[-1] = station
+    return top

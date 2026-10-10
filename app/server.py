@@ -10,7 +10,7 @@ from shapely import LineString, unary_union
 load_dotenv()
 
 from app.gemma import chat, summarize  # noqa: E402
-from app.routing import candidates, geocode, in_bbox, suggest  # noqa: E402
+from app.routing import candidates, geocode, in_bbox, nearest_transit, suggest  # noqa: E402
 from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, search_places, to_m  # noqa: E402
 
 INCIDENT_W = 20  # routes run 25-64/km; +5/km = 100 m flips a close call, a ~900 m shade lead survives 2x the rate
@@ -165,6 +165,13 @@ def shadows():
                 for p in tree.geometries[tree.query(near, predicate="intersects")]
                 if not math.isnan(p.area) and p.area > 0]
     return jsonify({"type": "FeatureCollection", "features": features})
+
+
+@app.get("/api/transit")
+def transit():
+    start = _point(request.args["from"]) if request.args.get("from") else (-80.19785, 25.77091)
+    end = _point(request.args["to"]) if request.args.get("to") else (-80.20199, 25.80244)
+    return jsonify({"board": nearest_transit(*start), "alight": nearest_transit(*end)})
 
 
 if __name__ == "__main__":
