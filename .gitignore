@@ -12,3 +12,4 @@ build/
 .next/
 .archify/
 .gstack/
+.claude/
