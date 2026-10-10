@@ -8,7 +8,7 @@ It is {when} ({mode}). Routes were ranked by {rule}.
 The recommended route is {best}. Recommend {best} and say why, comparing it with the others.
 Describe streets only by shade, lighting, open businesses, storefronts and car traffic. Fewer metres under elevated highways is better. Never call a neighborhood or its people unsafe. Call police data only "reported incidents"; never name or characterize a neighborhood, and never call a street or area dangerous or unsafe. Stick to the numbers given and do not exaggerate.
 Routes:
-{routes}"""
+{routes}{weather}"""
 
 
 def _gemini(prompt):
@@ -38,7 +38,7 @@ def _ollama(prompt):
 CHAT_PROMPT = """You are a walking guide in Miami answering a pedestrian's question in {language}, in at most 3 short sentences (under 60 words).
 It is {when} ({mode}). Routes were ranked by {rule}. Their candidate routes:
 {routes}
-Recommended: {best}. On {best}, by departure time: {other_times}.
+Recommended: {best}. On {best}, by departure time: {other_times}.{weather}
 Answer only from these numbers and general walking-safety common sense; if the data can't answer, say so.
 Describe streets only by shade, lighting, open businesses, storefronts and car traffic. Fewer metres under elevated highways is better. Never call a neighborhood or its people unsafe. Call police data only "reported incidents"; never name or characterize a neighborhood, and never call a street or area dangerous or unsafe.
 Conversation so far:
@@ -110,12 +110,28 @@ def _rule(scored):
             + ", plus least walking under elevated highways")
 
 
+def _weather(scored):
+    """Prompt lines for NWS alerts and a rainy/stormy departure forecast; empty when calm or unknown."""
+    w = scored.get("weather") or {}
+    lines = []
+    if w.get("alerts"):
+        lines.append("Weather alerts: " + "; ".join(f"{a.get('event')} until {a.get('ends')}" for a in w["alerts"]))
+    now = w.get("now")
+    if now and (now.get("rain_pct", 0) >= 30 or now.get("thunder")):
+        lines.append(f"Forecast at departure: {now.get('short')}, {now.get('rain_pct', 0)}% chance of rain")
+    if not lines:
+        return ""
+    lines.append("If there is a storm/thunder alert or thunder forecast, advise waiting or taking covered transit; "
+                 "otherwise mention rain chance briefly. Don't exaggerate.")
+    return "\n" + "\n".join(lines)
+
+
 def summarize(scored, language="English"):
     """scored: the /api/routes payload. Returns {"text", "engine"}."""
     day = scored["daylight"]
     prompt = PROMPT.format(
         language=language, when=scored["when"], routes=_route_lines(scored), best=scored["recommended"],
-        mode="daytime" if day else "night", rule=_rule(scored),
+        mode="daytime" if day else "night", rule=_rule(scored), weather=_weather(scored),
     )
     return _generate(prompt, "Route summary unavailable right now.")
 
@@ -126,5 +142,6 @@ def chat(scored, question, history, language="English", other_times="unknown"):
     prompt = CHAT_PROMPT.format(
         language=language, when=scored["when"], mode="daytime" if scored["daylight"] else "night",
         routes=_route_lines(scored), best=scored["recommended"], rule=_rule(scored), history=past, question=question, other_times=other_times,
+        weather=_weather(scored),
     )
     return _generate(prompt, "Sorry, I can't answer right now. Try again in a moment.")

@@ -1,7 +1,7 @@
 """Flask app: serves the map page, scores walking routes for a chosen time, and answers route questions with Gemma."""
 import math
 import os
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -10,6 +10,7 @@ from shapely import LineString, unary_union
 
 load_dotenv()
 
+from app import weather  # noqa: E402
 from app.gemma import chat, summarize  # noqa: E402
 from app.routing import candidates, geocode, in_bbox, nearest_transit, suggest, transit_option  # noqa: E402
 from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, search_places, to_m  # noqa: E402
@@ -39,7 +40,7 @@ def bad_request(e):
 
 def _when(args):
     try:
-        d = date.fromisoformat(args.get("date", "2026-10-10"))
+        d = date.fromisoformat(args.get("date") or datetime.now(MIAMI).date().isoformat())
         hour = min(max(float(args.get("hour", 16)), 0), 23.75)
     except ValueError as e:
         raise BadRequest("Invalid date or hour") from e
@@ -128,7 +129,13 @@ def _rank(args):
     # transit is an option, not the pick: rank walking routes first, transit routes after
     scored.sort(key=lambda r: (any(leg["type"] == "transit" for leg in r.get("legs", [])), _key(r, goal, base)))
     return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "goal": goal, "mode": mode,
-            "recommended": scored[0]["name"], "routes": scored}
+            "recommended": scored[0]["name"], "routes": scored, "weather": _weather(when)}
+
+
+def _weather(when):
+    now = weather.at(when)
+    return {"alerts": weather.alerts(),
+            "now": {k: now[k] for k in ("rain_pct", "thunder", "short")} if now else None}
 
 
 def _lang(args):
@@ -148,6 +155,13 @@ def index():
 @app.get("/api/routes")
 def score_routes():
     return jsonify(_rank(request.args))
+
+
+@app.get("/api/weather")
+def weather_now():
+    cutoff = datetime.now(MIAMI) - timedelta(hours=1)  # drop hours already over (forecast is cached 10 min)
+    return jsonify({"alerts": weather.alerts(),
+                    "hourly": [p for p in weather.hourly() if datetime.fromisoformat(p["start"]) > cutoff][:48]})
 
 
 @app.get("/api/summary")
