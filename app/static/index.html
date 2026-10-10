@@ -47,8 +47,11 @@
   .lang.on { background:var(--blue); color:#fff; border-color:var(--blue); }
   .route { border:1px solid var(--line); border-radius:12px; padding:10px 14px; display:flex; flex-direction:column; gap:6px; cursor:pointer; background:#fff; text-align:left; width:100%; color:inherit; }
   .route.best { border:2px solid var(--blue); background:#f8fbff; }
-  .route .top { display:flex; justify-content:space-between; align-items:center; font-weight:500; }
-  .badge { font-size:11px; font-weight:500; background:var(--blue); color:#fff; padding:3px 9px; border-radius:99px; }
+  .route .top { display:flex; justify-content:space-between; align-items:center; font-weight:500; gap:8px; }
+  .route .top > .rname { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .route .tags { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:6px; flex:0 1 auto; max-width:60%; }
+  .tag { font-size:11px; font-weight:500; color:var(--blue); background:#e8f0fe; border:1px solid #d2e3fc; padding:2px 8px; border-radius:99px; white-space:nowrap; }
+  .badge { font-size:11px; font-weight:500; background:var(--blue); color:#fff; padding:3px 9px; border-radius:99px; white-space:nowrap; }
   .sub { font-size:13px; color:var(--muted); }
   .bar { height:8px; border-radius:4px; background:#e8eaed; display:flex; overflow:hidden; }
   .primary { min-height:48px; border-radius:24px; background:var(--blue); color:#fff; font-size:15px; font-weight:500; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; flex:none; }
@@ -337,6 +340,12 @@ function render() {
   // Same busy score the server ranks by (storefronts x10 + cars/day / 100), so the winner has the fullest bar.
   const busyScore = (r) => (+r.storefronts_per_km || 0) * 10 + (+r.traffic_aadt || 0) / 100;
   const maxSf = Math.max(0, ...last.routes.map(busyScore));
+  // Secondary tags among walking-only routes (no transit leg); need 2+ to compare.
+  const TAGS = { English: ['Shortest', 'Busiest'], Spanish: ['Más corta', 'Más concurrida'], 'Haitian Creole': ['Pi kout', 'Pi aktif'] };
+  const [tShort, tBusy] = TAGS[lang] || TAGS.English;
+  const walks = last.routes.filter((r) => !(Array.isArray(r.legs) && r.legs.some((l) => l.type === 'transit')));
+  const pick = (f) => walks.length > 1 ? walks.reduce((a, b) => (f(b) > f(a) ? b : a)) : null;
+  const shortest = pick((r) => -r.distance_m), busiest = busy ? null : pick(busyScore);  // busy goal: primary badge already says Busiest
   $('routes').innerHTML = last.routes.map((r) => {
     const best = r.name === last.recommended, mine = r.name === (selected || last.recommended);
     const good = busy ? (maxSf ? busyScore(r) / maxSf : 0) : day ? r.shade : 1 - r.longest_dark_m / r.distance_m;
@@ -349,7 +358,7 @@ function render() {
     const safety = [nStops ? `${nStops} safe stop${nStops === 1 ? '' : 's'}` : '',
                     typeof r.incidents_per_km === 'number' ? `${perMi(r.incidents_per_km)} police reports/mi nearby` : ''].filter(Boolean).join(' · ');
     return `<button class="route ${best ? 'best' : ''}" data-name="${esc(r.name)}" style="${mine && !best ? 'border-color:#202124' : ''}">
-      <span class="top"><span>${esc(r.name)}</span>${best ? `<span class="badge">${busy ? 'Busiest' : day ? 'Shadiest' : 'Brightest'}</span>` : `<span class="sub">${mins(r.distance_m)}</span>`}</span>
+      <span class="top"><span class="rname">${esc(r.name)}</span><span class="tags">${best ? `<span class="badge">${busy ? 'Busiest' : day ? 'Shadiest' : 'Brightest'}</span>` : ''}${r === shortest ? `<span class="tag">${tShort}</span>` : ''}${r === busiest && busyScore(r) > 0 ? `<span class="tag">${tBusy}</span>` : ''}${best ? '' : `<span class="sub">${mins(r.distance_m)}</span>`}</span></span>
       <span class="sub">${best ? `<b style="color:#188038">${mins(r.distance_m)}</b> (${km(r.distance_m)}) · ` : `${km(r.distance_m)} · `}${detail}</span>
       ${safety ? `<span class="sub">${SHIELD(12, '#188038')} ${esc(safety)}</span>` : ''}
       ${legsText(r) ? `<span class="sub" style="color:#7627bb">${esc(legsText(r))}</span>` : ''}
@@ -501,7 +510,7 @@ document.querySelectorAll('.goal').forEach((b) => b.onclick = () => {
   document.querySelectorAll('.goal').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.goal === goal))); update(true);
 });
 document.querySelectorAll('.lang').forEach((b) => b.onclick = () => {
-  lang = b.dataset.lang; document.querySelectorAll('.lang').forEach((x) => x.classList.toggle('on', x === b)); loadSummary(ticket);
+  lang = b.dataset.lang; document.querySelectorAll('.lang').forEach((x) => x.classList.toggle('on', x === b)); loadSummary(ticket); if (last) render();
 });
 
 function addMsg(role, text, engine) {

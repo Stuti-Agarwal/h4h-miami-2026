@@ -47,9 +47,20 @@ def _abbrev(name):
     return name
 
 
-@lru_cache(maxsize=64)
+_found = {}  # successful results only: a transient OSRM failure must not be cached as "no route"
+
+
 def candidates(start, end):
     """start/end: (lon, lat) tuples. Returns {name: {"distance_m", "geometry"}} with up to MAX_ROUTES distinct routes."""
+    if (start, end) not in _found:
+        kept = _candidates(start, end)
+        if not kept:
+            return kept
+        _found[(start, end)] = kept
+    return _found[(start, end)]
+
+
+def _candidates(start, end):
     (x0, y0), (x1, y1) = to_m(*start), to_m(*end)
     length = math.hypot(x1 - x0, y1 - y0) or 1
     nx, ny = -(y1 - y0) / length, (x1 - x0) / length  # unit normal to the trip
