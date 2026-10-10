@@ -21,6 +21,7 @@ M_PER_DEG_LAT = 110_540
 TREE = 6
 STEP_M = 10
 LIT_M, LIT_WAY_M, ACTIVE_M, ACTIVE_MIN, TRANSIT_M = 30, 15, 50, 3, 100
+UNDER_HIGHWAY_M = 15  # within this of an elevated motorway/trunk centreline = walking under it
 MAX_SHADOW_M = 300
 # Places likely open after dark; offices/services count only by day.
 EVENING = {
@@ -34,7 +35,7 @@ def to_m(lon, lat):
     return (lon - BBOX[0]) * M_PER_DEG_LON, (lat - BBOX[1]) * M_PER_DEG_LAT
 
 
-COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": [], "osm_lit": []}
+COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": [], "osm_lit": [], "highways": []}
 
 
 def _query(sqlite_sql, postgis_sql):
@@ -139,6 +140,8 @@ class Scorer:
         self.lights = STRtree(_points(_load("lights")) + _points(osm_lamps))
         self.lit_ways = STRtree([LineString([to_m(x, y) for x, y in f["geometry"]["coordinates"]])
                                  for f in osm if f["geometry"]["type"] == "LineString"])
+        self.highways = STRtree([LineString([to_m(x, y) for x, y in f["geometry"]["coordinates"]])
+                                 for f in _load("highways")])
         self.places = STRtree(_points(places))
         self.evening_places = STRtree(_points([f for f in places if f["properties"].get("category") in EVENING]))
         self.stops = STRtree(_points(_load("stops")))
@@ -185,11 +188,12 @@ class Scorer:
                or len(self.lit_ways.query(p, predicate="dwithin", distance=LIT_WAY_M)) > 0 for p in samples]
         places = self.places if shadows is not None else self.evening_places
         active = [len(places.query(p, predicate="dwithin", distance=ACTIVE_M)) >= ACTIVE_MIN for p in samples]
+        under = [len(self.highways.query(p, predicate="dwithin", distance=UNDER_HIGHWAY_M)) > 0 for p in samples]
         transit = [len(self.stops.query(p, predicate="dwithin", distance=TRANSIT_M)) > 0 for p in samples]
 
         dark, longest_dark = 0, 0
-        for l, a in zip(lit, active):
-            dark = 0 if (l or a) else dark + 1
+        for l, a, u in zip(lit, active, under):
+            dark = 0 if (l or a) and not u else dark + 1  # under a viaduct counts as dark even if lamps are near
             longest_dark = max(longest_dark, dark)
 
         frac = lambda xs: round(sum(xs) / len(xs), 3)
@@ -204,6 +208,7 @@ class Scorer:
             "active": frac(active),
             "transit": frac(transit),
             "longest_dark_m": longest_dark * STEP_M,
-            "samples": [{"lon": round(x, 6), "lat": round(y, 6), "shaded": s, "lit": l, "active": a}
-                        for (x, y), s, l, a in zip(lonlat, shaded, lit, active)],
+            "under_highway_m": sum(under) * STEP_M,
+            "samples": [{"lon": round(x, 6), "lat": round(y, 6), "shaded": s, "lit": l, "active": a, "under": u}
+                        for (x, y), s, l, a, u in zip(lonlat, shaded, lit, active, under)],
         }

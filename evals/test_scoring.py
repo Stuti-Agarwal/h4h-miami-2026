@@ -76,11 +76,11 @@ def test_night_has_no_daylight_or_shade(scorer, routes):
 def rank(scorer, routes, when):
     """Mirrors _rank in app/server.py."""
     scored = [{"name": n, **scorer.score(r["geometry"]["coordinates"], when)} for n, r in routes.items()]
-    key = (lambda r: r["sun_exposed_m"]) if scored[0]["daylight"] else (lambda r: r["longest_dark_m"])
-    return sorted(scored, key=key)
+    base = "sun_exposed_m" if scored[0]["daylight"] else "longest_dark_m"
+    return sorted(scored, key=lambda r: r[base] + 4 * r["under_highway_m"])
 
 
-@pytest.mark.parametrize("hour,best", [(9, "NW 2nd Ave"), (13, "NW 2nd Ave"), (16, "NW 2nd Ave"), (21, "NW 3rd Ave")])
+@pytest.mark.parametrize("hour,best", [(9, "NW 2nd Ave"), (13, "NW 2nd Ave"), (16, "NW 2nd Ave"), (21, "N Miami Ave")])
 def test_ranking_regression(scorer, routes, hour, best):
     assert rank(scorer, routes, at(hour))[0]["name"] == best
 

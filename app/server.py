@@ -62,7 +62,9 @@ def _rank(args):
     scored = [{"name": n, "geometry": r["geometry"], **scorer.score(r["geometry"]["coordinates"], when)}
               for n, r in _routes(args).items()]
     day = scored[0]["daylight"]
-    scored.sort(key=(lambda r: r["sun_exposed_m"]) if day else (lambda r: r["longest_dark_m"]))
+    # 1 m under an elevated highway weighs like 4 m of sun (day) or of dark stretch (night).
+    base = "sun_exposed_m" if day else "longest_dark_m"
+    scored.sort(key=lambda r: r[base] + 4 * r["under_highway_m"])
     return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "recommended": scored[0]["name"], "routes": scored}
 
 

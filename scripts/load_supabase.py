@@ -14,6 +14,7 @@ COLUMNS = {
     "lights": [],
     "stops": [],
     "osm_lit": [],
+    "highways": [],
 }
 
 
