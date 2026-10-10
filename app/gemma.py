@@ -63,8 +63,10 @@ def _route_lines(scored):
         return (f"- {r['name']}{' (RECOMMENDED)' if r is best else ''}: {r['distance_m']} m"
                 f"{cmp('distance_m', 'm', 'longer', 'shorter')}, {light}, "
                 f"{r['under_highway_m']} m under elevated highways{cmp('under_highway_m', 'm', 'more', 'less')}, "
-                f"{r['active']:.0%} near open venues, {r['storefronts_per_km']} storefronts/km, "
-                f"~{r['traffic_aadt']} cars/day on adjacent roads, {r['transit']:.0%} near bus stops, "
+                f"{r['active']:.0%} near open venues, {r['storefronts_per_km']} storefronts/km"
+                f"{cmp('storefronts_per_km', 'per km', 'more', 'fewer')}, "
+                f"~{r['traffic_aadt']} cars/day on adjacent roads{cmp('traffic_aadt', 'cars/day', 'more', 'fewer')}, "
+                f"{r['transit']:.0%} near bus stops, "
                 f"{r['incidents_per_km']} reported incidents against people per km"
                 f"{cmp('incidents_per_km', 'per km', 'more', 'fewer')}, "
                 f"{len(r['safe_stops'])} safe stops (police, fire, hospital, hotels, pharmacies, 24h stores)")
