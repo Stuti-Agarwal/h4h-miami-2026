@@ -16,6 +16,10 @@ from app.routing import candidates, geocode, in_bbox, nearest_transit, suggest, 
 from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, search_places, to_m  # noqa: E402
 
 INCIDENT_W = 20  # routes run 25-64/km; +5/km = 100 m flips a close call, a ~900 m shade lead survives 2x the rate
+# Night busy key adds DARK_W points per metre of the longest unlit stretch: 1 m dark = 1/4 m under a highway, the same
+# ratio auto uses. At 21h demo dark stretches span 480-880 m (~400 pts) vs incidents ~770, highway ~160, storefront+
+# traffic ~60 pts, so lighting counts without swamping; incident weight is already the largest night term, kept at 20.
+DARK_W = 1
 GOALS = ("auto", "busy")
 MODES = ("walk", "transit")
 TRANSIT_NAME = "Metromover + walk"
@@ -108,9 +112,11 @@ def _key(r, goal, base):
     stretch (night); 1 reported incident against people per km weighs like INCIDENT_W m of sun / dark stretch.
     busy: 1 storefront/km and 1000 cars/day each = 10 points = 2.5 m under a highway. Demo routes span 28-35
     storefronts/km (~60 pts) and 8.3k-12.5k cars/day (~40 pts); at aadt/1000 traffic spanned only 4 pts and never
-    mattered. Same highway and incident penalties."""
+    mattered. Same highway and incident penalties; after dark (base longest_dark_m) busy also adds DARK_W per dark m."""
     penalty = 4 * r["under_highway_m"] + INCIDENT_W * r["incidents_per_km"]
     if goal == "busy":
+        if base == "longest_dark_m":
+            penalty += DARK_W * r[base]
         return -(r["storefronts_per_km"] * 10 + r["traffic_aadt"] / 100) + penalty
     return r[base] + penalty
 

@@ -14,7 +14,7 @@ Our project for [Hack for Humanity: Miami](https://github.com/AI-Collective-Hack
 
 - **Day:** every candidate route is scored by metres walked in direct sun. Shade comes from building shadows computed from the sun's real position (Overture building heights + SunCalc) and the Miami-Dade 2021 tree canopy map.
 - **Night / Busiest:** after dark (or when you tap **Busiest**) routes are ranked by street life: storefronts per mile (Overture places) and cars per day on the adjacent roads (FDOT traffic counts). Every ranking also penalizes reported incidents against people and metres walked under elevated highways. Street lights and places open late are shown per route.
-- **Time slider:** 6 AM to 11 PM; the recommended route changes with the sun (for 300 SW 2nd Ave → The LAB Miami: NW 2nd Ave at 4 PM, Biscayne Blvd at 9 PM). The map turns dark after sunset.
+- **Time slider:** 6 AM to 11 PM; the recommended route changes with the sun (for 300 SW 2nd Ave → The LAB Miami: NW 2nd Ave at 4 PM, N Miami Ave at 9 PM). The map turns dark after sunset.
 - **Walk or Transit:** the Transit chip shows nearby bus, Metromover and Metrorail stops at each end and adds a "Metromover + walk" option (only its walking legs are scored). It is listed as an alternative, never the top pick.
 - **Start walk:** follows you by GPS with miles and minutes left and the next safe stop (police, fire, hospital, hotel, pharmacy, 24h store). Without GPS, or far from the route, it plays a 30-second preview.
 - **SOS:** one tap to call 911 or share your location. **Maps** opens Google Maps directions; **Share** sends your trip.
