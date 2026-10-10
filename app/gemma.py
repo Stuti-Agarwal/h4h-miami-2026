@@ -46,29 +46,46 @@ Conversation so far:
 Question: {question}"""
 
 
-def _vs(value, base, unit, more, less):
+KM_PER_MI = 1.609344
+
+
+def _vs(value, base, unit, more, less, digits=0):
     d = value - base
-    return "same as recommended" if abs(d) < 1 else f"{abs(d):.0f} {unit} {more if d > 0 else less} than recommended"
+    return ("same as recommended" if round(abs(d), digits) == 0
+            else f"{abs(d):.{digits}f} {unit} {more if d > 0 else less} than recommended")
+
+
+def _miles(r):
+    """Route metrics with distance in miles and per-km rates per mile, for the prompt text."""
+    return {**r, "distance_mi": round(r["distance_m"] / 1000 / KM_PER_MI, 1),
+            "storefronts_per_mi": round(r["storefronts_per_km"] * KM_PER_MI, 1),
+            "incidents_per_mi": round(r["incidents_per_km"] * KM_PER_MI, 1),
+            "sun_mi": round(r["sun_exposed_m"] / 1000 / KM_PER_MI, 1),
+            "dark_ft": round(r["longest_dark_m"] * 3.28084), "highway_ft": round(r["under_highway_m"] * 3.28084)}
 
 
 def _route_lines(scored):
     # Precomputed comparisons: small local models get "longer/shorter" wrong when left to do the arithmetic.
     best = next(r for r in scored["routes"] if r["name"] == scored["recommended"])
 
+    b = _miles(best)
+
     def line(r):
-        cmp = (lambda v, unit, more, less: "") if r is best else (lambda v, unit, more, less: f" ({_vs(r[v], best[v], unit, more, less)})")
-        light = (f"{r['sun_exposed_m']} m in direct sun{cmp('sun_exposed_m', 'm', 'more', 'less')}, {r['shade']:.0%} shaded"
+        is_best, r = r is best, _miles(r)
+        cmp = (lambda v, unit, more, less, digits=0: "") if is_best else (
+            lambda v, unit, more, less, digits=0: f" ({_vs(r[v], b[v], unit, more, less, digits)})")
+        light = (f"{r['sun_exposed_m'] / 1609.344:.1f} mi in direct sun{cmp('sun_mi', 'mi', 'more', 'less', 1)}, {r['shade']:.0%} shaded"
                  if scored["daylight"] else
-                 f"longest dark, empty stretch {r['longest_dark_m']} m{cmp('longest_dark_m', 'm', 'more', 'less')}, {r['lit']:.0%} lit")
-        return (f"- {r['name']}{' (RECOMMENDED)' if r is best else ''}: {r['distance_m']} m"
-                f"{cmp('distance_m', 'm', 'longer', 'shorter')}, {light}, "
-                f"{r['under_highway_m']} m under elevated highways{cmp('under_highway_m', 'm', 'more', 'less')}, "
-                f"{r['active']:.0%} near open venues, {r['storefronts_per_km']} storefronts/km"
-                f"{cmp('storefronts_per_km', 'per km', 'more', 'fewer')}, "
+                 f"longest dark, empty stretch {r['longest_dark_m'] * 3.28084:.0f} ft{cmp('dark_ft', 'ft', 'more', 'less')}, {r['lit']:.0%} lit")
+        return (f"- {r['name']}{' (RECOMMENDED)' if is_best else ''}: {r['distance_mi']} mi"
+                f"{cmp('distance_mi', 'mi', 'longer', 'shorter', 1)}, {light}, "
+                f"{r['under_highway_m'] * 3.28084:.0f} ft under elevated highways{cmp('highway_ft', 'ft', 'more', 'less')}, "
+                f"{r['active']:.0%} near open venues, {r['storefronts_per_mi']} storefronts/mile"
+                f"{cmp('storefronts_per_mi', 'per mile', 'more', 'fewer')}, "
                 f"~{r['traffic_aadt']} cars/day on adjacent roads{cmp('traffic_aadt', 'cars/day', 'more', 'fewer')}, "
                 f"{r['transit']:.0%} near bus stops, "
-                f"{r['incidents_per_km']} reported incidents against people per km"
-                f"{cmp('incidents_per_km', 'per km', 'more', 'fewer')}, "
+                f"{r['incidents_per_mi']} reported incidents against people per mile"
+                f"{cmp('incidents_per_mi', 'per mile', 'more', 'fewer')}, "
                 f"{len(r['safe_stops'])} safe stops (police, fire, hospital, hotels, pharmacies, 24h stores)")
 
     return "\n".join(line(r) for r in scored["routes"])

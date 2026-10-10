@@ -196,7 +196,10 @@ const endPin = L.marker(DEMO.to, { draggable: true, icon: pin('#ea4335'), title:
 let custom = false, goal = 'auto', lang = 'English', last = null, selected = null, ticket = 0, history = [];
 
 const fmtHour = (h) => { const hh = Math.floor(h), mm = Math.round((h % 1) * 60); return `${(hh % 12) || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`; };
-const km = (m) => (m / 1000).toFixed(1) + ' km';
+// US units for display; the API stays metric.
+const km = (m) => (m / 1609.344).toFixed(1) + ' mi';
+const ft = (m) => Math.round(m * 3.28084 / 10) * 10 + ' ft';
+const perMi = (perKm) => (perKm * 1.609344).toFixed(1);
 const mins = (m) => Math.round(m / 80) + ' min';  // ~4.8 km/h walking
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function toast(text) { const t = $('toast'); t.textContent = text; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 4000); }
@@ -255,14 +258,14 @@ function render() {
   $('routes').innerHTML = last.routes.map((r) => {
     const best = r.name === last.recommended, mine = r.name === (selected || last.recommended);
     const good = busy ? (maxSf ? busyScore(r) / maxSf : 0) : day ? r.shade : 1 - r.longest_dark_m / r.distance_m;
-    const busyText = [typeof r.storefronts_per_km === 'number' ? `${r.storefronts_per_km.toFixed(1)} storefronts/km` : '',
+    const busyText = [typeof r.storefronts_per_km === 'number' ? `${perMi(r.storefronts_per_km)} storefronts/mi` : '',
                       typeof r.traffic_aadt === 'number' ? `~${(Math.round(r.traffic_aadt / 100) * 100).toLocaleString()} cars/day` : ''].filter(Boolean).join(' · ');
     const detail = (busy ? busyText || 'Busy-street data loading' : day ? `${km(r.sun_exposed_m)} in direct sun · ${Math.round(r.shade * 100)}% shaded`
-                        : `Longest dark stretch ${r.longest_dark_m} m · ${Math.round(r.lit * 100)}% lit`)
-                   + (r.under_highway_m ? ` · ${r.under_highway_m} m under highways` : '');
+                        : `Longest dark stretch ${ft(r.longest_dark_m)} · ${Math.round(r.lit * 100)}% lit`)
+                   + (r.under_highway_m ? ` · ${ft(r.under_highway_m)} under highways` : '');
     const nStops = (r.safe_stops || []).length;
     const safety = [nStops ? `${nStops} safe stop${nStops === 1 ? '' : 's'}` : '',
-                    typeof r.incidents_per_km === 'number' ? `${r.incidents_per_km.toFixed(1)} police reports/km nearby` : ''].filter(Boolean).join(' · ');
+                    typeof r.incidents_per_km === 'number' ? `${perMi(r.incidents_per_km)} police reports/mi nearby` : ''].filter(Boolean).join(' · ');
     return `<button class="route ${best ? 'best' : ''}" data-name="${esc(r.name)}" style="${mine && !best ? 'border-color:#202124' : ''}">
       <span class="top"><span>${esc(r.name)}</span>${best ? `<span class="badge">${busy ? 'Busiest' : day ? 'Shadiest' : 'Brightest'}</span>` : `<span class="sub">${mins(r.distance_m)}</span>`}</span>
       <span class="sub">${best ? `<b style="color:#188038">${mins(r.distance_m)}</b> (${km(r.distance_m)}) · ` : `${km(r.distance_m)} · `}${detail}</span>
