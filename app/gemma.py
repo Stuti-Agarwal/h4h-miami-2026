@@ -7,7 +7,7 @@ PROMPT = """You are a walking guide in Miami. Recommend one route for a pedestri
 It is {when} ({mode}). Routes were ranked by {rule}.
 The recommended route is {best}. Recommend {best} and say why, comparing it with the others.
 Describe streets only by shade, lighting and open businesses. Never call a neighborhood or its people unsafe. Stick to the numbers given and do not exaggerate.
-Routes (distance, sun-exposed metres, % shaded, longest dark stretch at night, % near open venues):
+Routes:
 {routes}"""
 
 
@@ -35,19 +35,38 @@ def _ollama(prompt):
     return r.json()["message"]["content"].strip()
 
 
-def summarize(scored, language="English"):
-    """scored: the /api/routes payload. Returns {"text", "engine"}."""
-    day = scored["daylight"]
-    lines = "\n".join(
-        f"- {r['name']}: {r['distance_m']} m, {r['sun_exposed_m']} m in sun, {r['shade']:.0%} shaded, "
-        f"longest dark {r['longest_dark_m']} m, {r['active']:.0%} near open venues"
-        for r in scored["routes"]
-    )
-    prompt = PROMPT.format(
-        language=language, when=scored["when"], routes=lines, best=scored["recommended"],
-        mode="daytime" if day else "night",
-        rule="fewest metres in direct sun" if day else "shortest dark, empty stretch",
-    )
+CHAT_PROMPT = """You are a walking guide in Miami answering a pedestrian's question in {language}, in at most 3 short sentences.
+It is {when} ({mode}). Their candidate routes:
+{routes}
+Recommended: {best}. Answer only from these numbers and general walking-safety common sense; if the data can't answer, say so.
+Describe streets only by shade, lighting and open businesses. Never call a neighborhood or its people unsafe.
+Conversation so far:
+{history}
+Question: {question}"""
+
+
+def _vs(value, base, unit, more, less):
+    d = value - base
+    return "same as recommended" if abs(d) < 1 else f"{abs(d):.0f} {unit} {more if d > 0 else less} than recommended"
+
+
+def _route_lines(scored):
+    # Precomputed comparisons: small local models get "longer/shorter" wrong when left to do the arithmetic.
+    best = next(r for r in scored["routes"] if r["name"] == scored["recommended"])
+
+    def line(r):
+        cmp = (lambda v, unit, more, less: "") if r is best else (lambda v, unit, more, less: f" ({_vs(r[v], best[v], unit, more, less)})")
+        light = (f"{r['sun_exposed_m']} m in direct sun{cmp('sun_exposed_m', 'm', 'more', 'less')}, {r['shade']:.0%} shaded"
+                 if scored["daylight"] else
+                 f"longest dark, empty stretch {r['longest_dark_m']} m{cmp('longest_dark_m', 'm', 'more', 'less')}, {r['lit']:.0%} lit")
+        return (f"- {r['name']}{' (RECOMMENDED)' if r is best else ''}: {r['distance_m']} m"
+                f"{cmp('distance_m', 'm', 'longer', 'shorter')}, {light}, "
+                f"{r['active']:.0%} near open venues, {r['transit']:.0%} near bus stops")
+
+    return "\n".join(line(r) for r in scored["routes"])
+
+
+def _generate(prompt, fallback):
     for engine, call in (("gemini-api:" + os.environ.get("GEMMA_MODEL", "gemma-4-26b-a4b-it"), _gemini),
                          ("ollama:" + os.environ.get("OLLAMA_MODEL", "gemma4:e4b-it-qat"), _ollama)):
         try:
@@ -56,4 +75,25 @@ def summarize(scored, language="English"):
                 return {"text": text, "engine": engine}
         except (requests.RequestException, KeyError, IndexError):
             continue
-    return {"text": "Route summary unavailable right now.", "engine": "none"}
+    return {"text": fallback, "engine": "none"}
+
+
+def summarize(scored, language="English"):
+    """scored: the /api/routes payload. Returns {"text", "engine"}."""
+    day = scored["daylight"]
+    prompt = PROMPT.format(
+        language=language, when=scored["when"], routes=_route_lines(scored), best=scored["recommended"],
+        mode="daytime" if day else "night",
+        rule="fewest metres in direct sun" if day else "shortest dark, empty stretch",
+    )
+    return _generate(prompt, "Route summary unavailable right now.")
+
+
+def chat(scored, question, history, language="English"):
+    """Answer a free-text question about the scored routes. history: [{"role": "user"|"gemma", "text"}]."""
+    past = "\n".join(f"{m.get('role', 'user')}: {str(m.get('text', ''))[:300]}" for m in history) or "(none)"
+    prompt = CHAT_PROMPT.format(
+        language=language, when=scored["when"], mode="daytime" if scored["daylight"] else "night",
+        routes=_route_lines(scored), best=scored["recommended"], history=past, question=question,
+    )
+    return _generate(prompt, "Sorry, I can't answer right now. Try again in a moment.")
