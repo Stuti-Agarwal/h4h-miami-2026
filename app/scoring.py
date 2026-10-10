@@ -21,6 +21,7 @@ M_PER_DEG_LAT = 110_540
 TREE = 6
 STEP_M = 10
 LIT_M, LIT_WAY_M, ACTIVE_M, ACTIVE_MIN, TRANSIT_M = 30, 15, 50, 3, 100
+INCIDENT_M, SAFE_STOP_M, MAX_SAFE_STOPS = 30, 40, 8
 UNDER_HIGHWAY_M = 15  # within this of an elevated motorway/trunk centreline = walking under it
 MAX_SHADOW_M = 300
 # Places likely open after dark; offices/services count only by day.
@@ -30,12 +31,16 @@ EVENING = {
     "food_and_beverage_store", "pharmacy_and_drug_store", "gas_station", "hotel", "lodging", "movie_theater",
 }
 
+# "Step inside" places: emergency services plus places usually staffed late.
+SAFE_STOP = {"police_station", "fire_station", "hospital", "pharmacy_and_drug_store", "pharmacy",
+             "hotel", "convenience_store", "gas_station"}
+
 
 def to_m(lon, lat):
     return (lon - BBOX[0]) * M_PER_DEG_LON, (lat - BBOX[1]) * M_PER_DEG_LAT
 
 
-COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": [], "osm_lit": [], "highways": []}
+COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": [], "osm_lit": [], "highways": [], "incidents": ["category", "date"]}
 
 
 def _query(sqlite_sql, postgis_sql):
@@ -148,6 +153,9 @@ class Scorer:
         self.places = STRtree(_points(places))
         self.evening_places = STRtree(_points([f for f in places if f["properties"].get("category") in EVENING]))
         self.stops = STRtree(_points(_load("stops")))
+        self.incidents = STRtree(_points([f for f in _load("incidents") if f["properties"].get("category") == "Person"]))
+        self.safe_stops = [f for f in places if f["properties"].get("category") in SAFE_STOP]
+        self.safe_tree = STRtree(_points(self.safe_stops))
         self.landcover = np.array(Image.open(DATA / "landcover.tif"))
 
     def shadows(self, when: datetime):
@@ -194,6 +202,10 @@ class Scorer:
         under = [len(self.highways.query(p, predicate="dwithin", distance=UNDER_HIGHWAY_M)) > 0 for p in samples]
         transit = [len(self.stops.query(p, predicate="dwithin", distance=TRANSIT_M)) > 0 for p in samples]
 
+        hits = [set(self.incidents.query(p, predicate="dwithin", distance=INCIDENT_M).tolist()) for p in samples]
+        incident = [bool(h) for h in hits]
+        n_incidents = len(set().union(*hits))
+
         dark, longest_dark = 0, 0
         for l, a, u in zip(lit, active, under):
             dark = 0 if (l or a) and not u else dark + 1  # under a viaduct counts as dark even if lamps are near
@@ -212,6 +224,26 @@ class Scorer:
             "transit": frac(transit),
             "longest_dark_m": longest_dark * STEP_M,
             "under_highway_m": sum(under) * STEP_M,
-            "samples": [{"lon": round(x, 6), "lat": round(y, 6), "shaded": s, "lit": l, "active": a, "under": u}
-                        for (x, y), s, l, a, u in zip(lonlat, shaded, lit, active, under)],
+            "incidents_per_km": round(n_incidents / max(line.length / 1000, 0.01), 1),  # Person-category police reports
+            "safe_stops": self._safe_stops(line),
+            "samples": [{"lon": round(x, 6), "lat": round(y, 6), "shaded": s, "lit": l, "active": a, "under": u,
+                         "incident": i}
+                        for (x, y), s, l, a, u, i in zip(lonlat, shaded, lit, active, under, incident)],
         }
+
+    def _safe_stops(self, line):
+        """Up to MAX_SAFE_STOPS step-inside places within SAFE_STOP_M of the route, spread along it."""
+        near = self.safe_tree.query(line, predicate="dwithin", distance=SAFE_STOP_M)
+        pts = self.safe_tree.geometries
+        picked = [int(i) for i in near]
+        if len(picked) > MAX_SAFE_STOPS:  # nearest stop to each of evenly spaced points along the route
+            targets = [line.interpolate((k + 0.5) / MAX_SAFE_STOPS, normalized=True) for k in range(MAX_SAFE_STOPS)]
+            picked = list(dict.fromkeys(min(picked, key=lambda j: pts[j].distance(t)) for t in targets))
+        picked.sort(key=lambda i: line.project(pts[i]))
+        out = []
+        for i in picked:
+            f = self.safe_stops[i]
+            lon, lat = f["geometry"]["coordinates"][:2]
+            out.append({"name": f["properties"].get("name") or "", "category": f["properties"]["category"],
+                        "lon": round(lon, 6), "lat": round(lat, 6)})
+        return out

@@ -8,6 +8,7 @@ import pytest
 from shapely import Polygon
 
 from app.scoring import Scorer, load_routes
+from app.server import INCIDENT_W
 
 MIAMI = ZoneInfo("America/New_York")
 
@@ -77,10 +78,10 @@ def rank(scorer, routes, when):
     """Mirrors _rank in app/server.py."""
     scored = [{"name": n, **scorer.score(r["geometry"]["coordinates"], when)} for n, r in routes.items()]
     base = "sun_exposed_m" if scored[0]["daylight"] else "longest_dark_m"
-    return sorted(scored, key=lambda r: r[base] + 4 * r["under_highway_m"])
+    return sorted(scored, key=lambda r: r[base] + 4 * r["under_highway_m"] + INCIDENT_W * r["incidents_per_km"])
 
 
-@pytest.mark.parametrize("hour,best", [(9, "NW 2nd Ave"), (13, "NW 2nd Ave"), (16, "NW 2nd Ave"), (21, "N Miami Ave")])
+@pytest.mark.parametrize("hour,best", [(9, "N Miami Ave"), (13, "NW 3rd Ave"), (16, "NW 2nd Ave"), (21, "NW 3rd Ave")])
 def test_ranking_regression(scorer, routes, hour, best):
     assert rank(scorer, routes, at(hour))[0]["name"] == best
 

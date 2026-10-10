@@ -102,7 +102,21 @@ def _photon_label(p):
     return _abbrev(p.get("name") or street), _abbrev(street if p.get("name") else (p.get("district") or p.get("city") or "Miami"))
 
 
-def suggest(query, local_places):
+@lru_cache(maxsize=512)
+def _photon(query):
+    """Photon address hits for query (cached: the public API takes 0.6-2 s, too slow to wait on per keystroke)."""
+    r = requests.get(PHOTON, params={"q": query, "limit": 6, "bbox": ",".join(map(str, BBOX))}, headers=HEADERS, timeout=3)
+    r.raise_for_status()
+    hits = []
+    for f in r.json()["features"]:
+        lon, lat = f["geometry"]["coordinates"][:2]
+        label, detail = _photon_label(f["properties"])
+        if label and label.strip() and in_bbox(lon, lat):
+            hits.append({"label": label.strip(), "detail": detail, "lon": lon, "lat": lat})
+    return tuple(hits)
+
+
+def suggest(query, local_places, remote=True):
     """Up to 6 {label, detail, lon, lat}: strong local name matches first (instant, in-area), then Photon addresses.
     local_places: (name, category, geojson, tier) rows from scoring.search_places. Weak local 'contains' matches
     (tier 4) go last, and also below Photon for address-like queries (starting with a digit, e.g. "300 SW 2nd")."""
@@ -112,16 +126,11 @@ def suggest(query, local_places):
         (strong if tier <= 3 else weak).append(
             {"label": name, "detail": (category or "place").replace("_", " "), "lon": lon, "lat": lat})
     photon = []
-    try:
-        r = requests.get(PHOTON, params={"q": query, "limit": 6, "bbox": ",".join(map(str, BBOX))}, headers=HEADERS, timeout=4)
-        r.raise_for_status()
-        for f in r.json()["features"]:
-            lon, lat = f["geometry"]["coordinates"][:2]
-            label, detail = _photon_label(f["properties"])
-            if label and label.strip() and in_bbox(lon, lat):
-                photon.append({"label": label.strip(), "detail": detail, "lon": lon, "lat": lat})
-    except (requests.RequestException, KeyError, ValueError):
-        pass  # local suggestions still work offline
+    if remote:
+        try:
+            photon = [dict(h) for h in _photon(" ".join(query.lower().split()))]
+        except (requests.RequestException, KeyError, ValueError):
+            pass  # local suggestions still work offline
     qn = " ".join(query.lower().split())
     photon.sort(key=lambda s: not s["label"].lower().startswith(qn))  # e.g. "300 SW 2nd Ave" before "300 NE 2nd Ave"
     ordered = strong + (photon + weak if query.strip()[:1].isdigit() else weak + photon)

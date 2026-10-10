@@ -6,7 +6,7 @@ import requests
 PROMPT = """You are a walking guide in Miami. Recommend one route for a pedestrian in {language}, in at most 3 short sentences (under 60 words).
 It is {when} ({mode}). Routes were ranked by {rule}.
 The recommended route is {best}. Recommend {best} and say why, comparing it with the others.
-Describe streets only by shade, lighting and open businesses. Fewer metres under elevated highways is better. Never call a neighborhood or its people unsafe. Stick to the numbers given and do not exaggerate.
+Describe streets only by shade, lighting and open businesses. Fewer metres under elevated highways is better. Never call a neighborhood or its people unsafe. Call police data only "reported incidents"; never name or characterize a neighborhood, and never call a street or area dangerous or unsafe. Stick to the numbers given and do not exaggerate.
 Routes:
 {routes}"""
 
@@ -40,7 +40,7 @@ It is {when} ({mode}). Their candidate routes:
 {routes}
 Recommended: {best}. On {best}, by departure time: {other_times}.
 Answer only from these numbers and general walking-safety common sense; if the data can't answer, say so.
-Describe streets only by shade, lighting and open businesses. Fewer metres under elevated highways is better. Never call a neighborhood or its people unsafe.
+Describe streets only by shade, lighting and open businesses. Fewer metres under elevated highways is better. Never call a neighborhood or its people unsafe. Call police data only "reported incidents"; never name or characterize a neighborhood, and never call a street or area dangerous or unsafe.
 Conversation so far:
 {history}
 Question: {question}"""
@@ -63,7 +63,10 @@ def _route_lines(scored):
         return (f"- {r['name']}{' (RECOMMENDED)' if r is best else ''}: {r['distance_m']} m"
                 f"{cmp('distance_m', 'm', 'longer', 'shorter')}, {light}, "
                 f"{r['under_highway_m']} m under elevated highways{cmp('under_highway_m', 'm', 'more', 'less')}, "
-                f"{r['active']:.0%} near open venues, {r['transit']:.0%} near bus stops")
+                f"{r['active']:.0%} near open venues, {r['transit']:.0%} near bus stops, "
+                f"{r['incidents_per_km']} reported incidents against people per km"
+                f"{cmp('incidents_per_km', 'per km', 'more', 'fewer')}, "
+                f"{len(r['safe_stops'])} safe stops (police, fire, hospital, hotels, pharmacies, 24h stores)")
 
     return "\n".join(line(r) for r in scored["routes"])
 

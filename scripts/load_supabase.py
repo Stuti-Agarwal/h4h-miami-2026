@@ -15,6 +15,7 @@ COLUMNS = {
     "stops": [],
     "osm_lit": [],
     "highways": [],
+    "incidents": ["category", "date"],
 }
 
 

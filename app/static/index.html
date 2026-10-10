@@ -251,7 +251,7 @@ function render() {
                    + (r.under_highway_m ? ` · ${r.under_highway_m} m under highways` : '');
     const nStops = (r.safe_stops || []).length;
     const safety = [nStops ? `${nStops} safe stop${nStops === 1 ? '' : 's'}` : '',
-                    typeof r.incidents_per_km === 'number' ? `${r.incidents_per_km.toFixed(1)} reported incidents/km` : ''].filter(Boolean).join(' · ');
+                    typeof r.incidents_per_km === 'number' ? `${r.incidents_per_km.toFixed(1)} police reports/km nearby` : ''].filter(Boolean).join(' · ');
     return `<button class="route ${best ? 'best' : ''}" data-name="${esc(r.name)}" style="${mine && !best ? 'border-color:#202124' : ''}">
       <span class="top"><span>${esc(r.name)}</span>${best ? `<span class="badge">${day ? 'Shadiest' : 'Brightest'}</span>` : `<span class="sub">${mins(r.distance_m)}</span>`}</span>
       <span class="sub">${best ? `<b style="color:#188038">${mins(r.distance_m)}</b> (${km(r.distance_m)}) · ` : `${km(r.distance_m)} · `}${detail}</span>
@@ -366,9 +366,12 @@ for (const id of ['from', 'to']) {
     const q = input.value.trim(), my = ++suggSeq;
     if (q.length < 2) { closeSugg(); return; }
     suggTimer = setTimeout(async () => {
-      try { const items = await getJSON('/api/suggest?q=' + encodeURIComponent(q)); if (my === suggSeq) showSugg(input, items); }
-      catch (e) { if (my === suggSeq) closeSugg(); }
-    }, 200);
+      // Local matches render instantly; the full list (with street addresses) replaces them when it arrives.
+      const url = '/api/suggest?q=' + encodeURIComponent(q);
+      getJSON(url + '&remote=0').then((items) => { if (my === suggSeq && items.length) showSugg(input, items); }).catch(() => {});
+      try { const items = await getJSON(url); if (my === suggSeq) showSugg(input, items); }
+      catch (e) { if (my === suggSeq && sugg.hidden) closeSugg(); }
+    }, 120);
   });
   input.addEventListener('keydown', (e) => {
     if (sugg.hidden || suggFor !== input) return;

@@ -13,6 +13,7 @@ from app.gemma import chat, summarize  # noqa: E402
 from app.routing import candidates, geocode, in_bbox, suggest  # noqa: E402
 from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, search_places, to_m  # noqa: E402
 
+INCIDENT_W = 20  # routes run 25-64/km; +5/km = 100 m flips a close call, a ~900 m shade lead survives 2x the rate
 MIAMI = ZoneInfo("America/New_York")
 LANGS = ("English", "Spanish", "Haitian Creole")
 app = Flask(__name__, static_folder="static")
@@ -63,8 +64,9 @@ def _rank(args):
               for n, r in _routes(args).items()]
     day = scored[0]["daylight"]
     # 1 m under an elevated highway weighs like 4 m of sun (day) or of dark stretch (night).
+    # 1 reported incident against people per km weighs like INCIDENT_W m of sun / dark stretch.
     base = "sun_exposed_m" if day else "longest_dark_m"
-    scored.sort(key=lambda r: r[base] + 4 * r["under_highway_m"])
+    scored.sort(key=lambda r: r[base] + 4 * r["under_highway_m"] + INCIDENT_W * r["incidents_per_km"])
     return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "recommended": scored[0]["name"], "routes": scored}
 
 
@@ -126,7 +128,8 @@ def suggestions():
     q = request.args.get("q", "").strip()[:80]
     if len(q) < 2:
         return jsonify([])
-    return jsonify(suggest(q, search_places(q)))
+    # remote=0: local places only (~2 ms), so the page can show something before Photon answers.
+    return jsonify(suggest(q, search_places(q), remote=request.args.get("remote") != "0"))
 
 
 @app.get("/api/shadows")
