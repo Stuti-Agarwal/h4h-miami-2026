@@ -1,5 +1,6 @@
 """Flask app: serves the map page, scores walking routes for a chosen time, and answers route questions with Gemma."""
 import math
+import os
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -20,6 +21,9 @@ TRANSIT_NAME = "Metromover + walk"
 MIAMI = ZoneInfo("America/New_York")
 LANGS = ("English", "Spanish", "Haitian Creole")
 app = Flask(__name__, static_folder="static")
+if os.environ.get("ALLOWED_ORIGINS"):  # comma-separated; only set when the frontend is served from another origin
+    from flask_cors import CORS
+    CORS(app, resources={r"/api/*": {"origins": os.environ["ALLOWED_ORIGINS"].split(",")}})
 scorer = Scorer()
 demo_routes = load_routes()  # cached 300 SW 2nd Ave -> The LAB Miami, used when no points are given or routing fails
 
