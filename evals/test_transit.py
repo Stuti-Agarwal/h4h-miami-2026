@@ -40,6 +40,7 @@ def test_transit_mode_adds_metromover(monkeypatch):
     mover = next(r for r in body["routes"] if r["name"] == "Metromover + walk")
     ride = [leg for leg in mover["legs"] if leg["type"] == "transit"]
     assert len(ride) == 1 and ride[0]["distance_m"] >= 400 and ride[0]["line"].startswith("Metromover")
+    assert body["recommended"] != "Metromover + walk" and names[-1] == "Metromover + walk"  # option, not the pick
 
 
 def test_walk_mode_unchanged():

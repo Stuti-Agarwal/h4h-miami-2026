@@ -121,7 +121,8 @@ def _rank(args):
     if not day:  # after dark, busy streets (storefronts, passing cars) are the safety signal, so auto ranks as busy
         goal = "busy"
     base = "sun_exposed_m" if day else "longest_dark_m"
-    scored.sort(key=lambda r: _key(r, goal, base))
+    # transit is an option, not the pick: rank walking routes first, transit routes after
+    scored.sort(key=lambda r: (any(leg["type"] == "transit" for leg in r.get("legs", [])), _key(r, goal, base)))
     return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "goal": goal, "mode": mode,
             "recommended": scored[0]["name"], "routes": scored}
 
