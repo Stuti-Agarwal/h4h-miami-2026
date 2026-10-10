@@ -10,7 +10,16 @@ Our project for [Hack for Humanity: Miami](https://github.com/AI-Collective-Hack
 
 ## What it does
 
-Finds the shadiest walking route across Miami for a given time of day. Each candidate route is scored by tree canopy plus building shadows computed from the sun's position, and Gemma 4 explains the recommendation.
+**SombraRoute finds the coolest walk by day and the brightest walk by night**, anywhere between Downtown Miami and Wynwood.
+
+- **Day:** every candidate route is scored by metres walked in direct sun. Shade comes from building shadows computed from the sun's real position (Overture building heights + SunCalc) and the Miami-Dade 2021 tree canopy map.
+- **Night:** routes are scored by their longest dark, empty stretch, using Miami-Dade and OpenStreetMap street lights plus places likely open late.
+- **Time slider:** drag from 4 PM to 9 PM and the recommended route changes (NW 2nd Ave by day, NW 3rd Ave at night for 300 SW 2nd Ave → The LAB Miami).
+- **Gemma 4** (`gemma-4-26b-a4b-it` via the Gemini API) explains the pick in English, Spanish or Haitian Creole, and answers follow-up questions in the **Ask Gemma** chat ("When should I leave?", "Any bus stops on the way?"). It falls back to Gemma 4 running locally in Ollama when offline.
+- **Phone app:** open it on a phone and use *Add to Home Screen*; it launches full-screen like a native app (PWA).
+- **Evals:** `evals/` checks the shadow physics, route rankings and Gemma's answers (right route, right language, no stigmatizing language about neighborhoods).
+
+Why it matters: heat is Miami's deadliest weather hazard, and the people who walk the most (transit riders, outdoor workers, students) get the least shade. At night, the same people need lit, active streets.
 
 ## Tech stack
 
@@ -31,7 +40,7 @@ Python · Flask · SQLite (Supabase/PostGIS ready) · Shapely · SunCalc · Leaf
 ```bash
 cp .env.example .env   # add your GEMINI_API_KEY
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m app.server   # http://localhost:5050
+.venv/bin/python -m app.server   # http://localhost:5050 (and http://<your-laptop-ip>:5050 from a phone on the same Wi-Fi)
 ```
 
 `data/` (including the SQLite store `data/sombra.db`) is committed, so no downloads are needed. To refresh it:
