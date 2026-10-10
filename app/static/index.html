@@ -20,7 +20,7 @@
   #map .leaflet-tile-pane { filter: saturate(.55) brightness(1.04); }
   body.night #map .leaflet-tile-pane { filter: invert(.92) hue-rotate(180deg) saturate(.4) brightness(.9); }
   button, input, select { font: inherit; }
-  .card { position:fixed; left:12px; right:12px; top:calc(12px + env(safe-area-inset-top)); z-index:1000; background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(60,64,67,.3); padding:10px 12px; display:flex; gap:10px; align-items:center; }
+  .card { position:fixed; left:12px; right:12px; top:calc(12px + env(safe-area-inset-top)); z-index:1050; background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(60,64,67,.3); padding:10px 12px; display:flex; gap:10px; align-items:center; }
   .card .dots { width:12px; flex:none; display:flex; flex-direction:column; align-items:center; gap:4px; }
   .card .dots i { display:block; width:3px; height:3px; border-radius:50%; background:#9aa0a6; }
   .card form { flex:1; display:flex; flex-direction:column; gap:6px; margin:0; }
@@ -66,6 +66,22 @@
   .compose { display:flex; gap:8px; padding:10px 12px calc(14px + env(safe-area-inset-bottom)); border-top:1px solid #e8eaed; margin:0; }
   .compose input { flex:1; height:48px; border:1px solid var(--line); border-radius:24px; padding:0 16px; font-size:16px; background:#f8f9fa; }
   .send { width:48px; height:48px; border-radius:50%; border:0; background:var(--blue); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .sugg { position:absolute; left:0; right:0; top:calc(100% + 6px); margin:0; padding:6px 0; list-style:none; background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(60,64,67,.3); max-height:min(60vh, 360px); overflow-y:auto; }
+  .sugg[hidden] { display:none; }
+  .sugg li { min-height:52px; padding:6px 16px; display:flex; align-items:center; gap:14px; cursor:pointer; }
+  .sugg li[aria-selected="true"], .sugg li:hover { background:#f1f3f4; }
+  .sugg .ic { flex:none; width:32px; height:32px; border-radius:50%; background:#f1f3f4; display:flex; align-items:center; justify-content:center; }
+  .sugg .tx { min-width:0; display:flex; flex-direction:column; }
+  .sugg b { font-weight:500; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sugg small { font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .secondary { min-height:48px; border-radius:24px; background:#fff; color:var(--blue); border:1px solid var(--line); font-size:15px; font-weight:500; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; flex:none; width:100%; }
+  .sos { position:fixed; right:12px; bottom:calc(52vh + 16px); z-index:1050; width:48px; height:48px; border-radius:50%; border:0; background:#d93025; color:#fff; font-size:14px; font-weight:700; box-shadow:0 2px 6px rgba(60,64,67,.4); cursor:pointer; }
+  .sospanel { position:fixed; left:12px; right:12px; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:1150; background:#fff; border-radius:16px; box-shadow:0 4px 16px rgba(60,64,67,.4); padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .sospanel[hidden] { display:none; }
+  .sospanel h2 { margin:0; font-size:18px; font-weight:500; }
+  .sospanel .call { min-height:56px; border-radius:28px; background:#d93025; color:#fff; font-size:18px; font-weight:700; display:flex; align-items:center; justify-content:center; text-decoration:none; }
+  .sospanel .cancel { min-height:44px; border:0; background:transparent; color:var(--muted); font-size:15px; cursor:pointer; }
+  @media (min-width: 760px) { .sos { right:16px; bottom:24px; } .sospanel { left:auto; right:16px; bottom:84px; width:340px; } }
   .sr { position:absolute; left:-9999px; }
   @media (min-width: 760px) {
     .card, .chips { right:auto; width:400px; }
@@ -85,11 +101,12 @@
   </div>
   <form id="trip">
     <label class="sr" for="from">Starting point</label>
-    <input id="from" value="300 SW 2nd Ave" autocomplete="off" enterkeyhint="search">
+    <input id="from" value="300 SW 2nd Ave" autocomplete="off" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-controls="sugg" aria-expanded="false">
     <label class="sr" for="to">Destination</label>
-    <input id="to" value="The LAB Miami" autocomplete="off" enterkeyhint="search">
+    <input id="to" value="The LAB Miami" autocomplete="off" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-controls="sugg" aria-expanded="false">
     <button type="submit" class="sr">Find routes</button>
   </form>
+  <ul class="sugg" id="sugg" role="listbox" aria-label="Suggestions" hidden></ul>
   <button class="iconbtn" id="swap" aria-label="Swap start and destination"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v14M4 14l4 4 4-4M16 20V6M12 10l4-4 4 4" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
 
@@ -123,8 +140,18 @@
   </div>
   <div id="routes" style="display:flex;flex-direction:column;gap:8px"></div>
   <a id="gmaps" class="primary" target="_blank" rel="noopener" href="#"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 19-8-4-8 4z" fill="#fff"/></svg><span id="gmapslabel">Walk it in Google Maps</span></a>
+  <button id="share" class="secondary"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v7h14v-7" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Share my trip</button>
   <p class="sub" style="margin:0;font-size:11px">Shade: Overture building shadows from the sun's position + Miami-Dade 2021 tree canopy. Night: county + OpenStreetMap street lights and places likely open late. Covers Downtown to Wynwood.</p>
 </section>
+
+<button class="sos" id="sos" aria-label="Emergency: call 911" aria-haspopup="dialog" aria-controls="sospanel">SOS</button>
+<div class="sospanel" id="sospanel" role="dialog" aria-modal="true" aria-labelledby="sostitle" hidden>
+  <h2 id="sostitle">Emergency</h2>
+  <a class="call" href="tel:911">Call 911</a>
+  <p class="sub" style="margin:0">You're near <b id="sosnear" style="color:var(--ink)"></b></p>
+  <button class="secondary" id="sosshare">Share my location</button>
+  <button class="cancel" id="soscancel">Cancel</button>
+</div>
 
 <section class="chat" id="chat" aria-label="Ask Gemma">
   <header>
@@ -264,16 +291,81 @@ async function place(input, marker) {
   } catch (e) { toast(e.message); return false; }
 }
 
+// Inputs whose value matches their pin (demo defaults, a picked suggestion, a geocode or a dropped pin).
+const chosen = { from: true, to: true };
 $('trip').addEventListener('submit', async (e) => {
   e.preventDefault(); document.activeElement.blur();
-  if (await place($('from'), startPin) && await place($('to'), endPin)) { custom = true; update(true); }
+  if ((chosen.from || await place($('from'), startPin)) && (chosen.to || await place($('to'), endPin))) {
+    chosen.from = chosen.to = true; custom = true; update(true);
+  }
 });
+
+// Type-ahead suggestions (Google Maps style). Rows are built with textContent only: labels come from third-party data.
+const sugg = $('sugg'), PIN_SVG = 'M6 0C2.7 0 0 2.6 0 5.8 0 10 6 16 6 16s6-6 6-10.2C12 2.6 9.3 0 6 0z';
+let suggFor = null, suggItems = [], suggIdx = -1, suggSeq = 0, suggTimer, blurTimer;
+function closeSugg() {
+  sugg.hidden = true; sugg.replaceChildren(); suggItems = []; suggIdx = -1;
+  for (const id of ['from', 'to']) { $(id).setAttribute('aria-expanded', 'false'); $(id).removeAttribute('aria-activedescendant'); }
+}
+function highlight(i) {
+  suggIdx = i;
+  [...sugg.children].forEach((li, j) => li.setAttribute('aria-selected', String(j === i)));
+  if (i >= 0) { sugg.children[i].scrollIntoView({ block: 'nearest' }); suggFor.setAttribute('aria-activedescendant', sugg.children[i].id); }
+  else suggFor.removeAttribute('aria-activedescendant');
+}
+function pick(i) {
+  const s = suggItems[i], input = suggFor; if (!s) return;
+  input.value = s.label; (input.id === 'from' ? startPin : endPin).setLatLng([s.lat, s.lon]);
+  chosen[input.id] = true; custom = true; closeSugg();
+  if (chosen.from && chosen.to) { input.blur(); update(true); }
+  else $(input.id === 'from' ? 'to' : 'from').focus();
+}
+function showSugg(input, items) {
+  closeSugg(); if (!items.length || document.activeElement !== input) return;
+  suggFor = input; suggItems = items;
+  items.forEach((s, i) => {
+    const li = document.createElement('li'); li.id = 'sugg-' + i; li.setAttribute('role', 'option'); li.setAttribute('aria-selected', 'false');
+    const ic = document.createElement('span'); ic.className = 'ic';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('width', '12'); svg.setAttribute('height', '16'); svg.setAttribute('viewBox', '0 0 12 16'); svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', PIN_SVG); path.setAttribute('fill', '#5f6368');
+    svg.appendChild(path); ic.appendChild(svg);
+    const tx = document.createElement('span'); tx.className = 'tx';
+    const b = document.createElement('b'); b.textContent = s.label; tx.appendChild(b);
+    if (s.detail) { const sm = document.createElement('small'); sm.textContent = s.detail; tx.appendChild(sm); }
+    li.append(ic, tx);
+    li.addEventListener('mousedown', (e) => e.preventDefault());  // keep focus in the input so blur doesn't close first
+    li.addEventListener('click', () => pick(i));
+    sugg.appendChild(li);
+  });
+  sugg.hidden = false; input.setAttribute('aria-expanded', 'true');
+}
+for (const id of ['from', 'to']) {
+  const input = $(id);
+  input.addEventListener('input', () => {
+    chosen[id] = false; clearTimeout(suggTimer);
+    const q = input.value.trim(), my = ++suggSeq;
+    if (q.length < 2) { closeSugg(); return; }
+    suggTimer = setTimeout(async () => {
+      try { const items = await getJSON('/api/suggest?q=' + encodeURIComponent(q)); if (my === suggSeq) showSugg(input, items); }
+      catch (e) { if (my === suggSeq) closeSugg(); }
+    }, 200);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (sugg.hidden || suggFor !== input) return;
+    const n = suggItems.length;
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlight((suggIdx + 1) % n); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlight(suggIdx <= 0 ? n - 1 : suggIdx - 1); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeSugg(); }
+    else if (e.key === 'Enter') { if (suggIdx >= 0) { e.preventDefault(); pick(suggIdx); } else closeSugg(); }
+  });
+  input.addEventListener('blur', () => { clearTimeout(blurTimer); blurTimer = setTimeout(() => { const f = document.activeElement; if (f !== $('from') && f !== $('to')) { ++suggSeq; closeSugg(); } else if (f !== input && suggFor === input) closeSugg(); }, 150); });
+}
 $('swap').onclick = () => {
   const a = startPin.getLatLng(), b = endPin.getLatLng(); startPin.setLatLng(b); endPin.setLatLng(a);
-  [$('from').value, $('to').value] = [$('to').value, $('from').value]; custom = true; update(true);
+  [$('from').value, $('to').value] = [$('to').value, $('from').value]; [chosen.from, chosen.to] = [chosen.to, chosen.from]; custom = true; update(true);
 };
 for (const [m, input] of [[startPin, 'from'], [endPin, 'to']]) {
-  m.on('dragend', () => { custom = true; $(input).value = 'Dropped pin'; update(true); });
+  m.on('dragend', () => { custom = true; $(input).value = 'Dropped pin'; chosen[input] = true; update(true); });
 }
 let t;
 $('hour').addEventListener('input', () => { $('clock').textContent = fmtHour(+$('hour').value); clearTimeout(t); t = setTimeout(() => update(false), 200); });
@@ -301,6 +393,26 @@ $('openchat').onclick = () => {
   if (!$('msgs').children.length) addMsg('gemma', 'Hi! Ask me anything about these routes: shade, lighting, places to stop or when to leave.');
   $('q').focus();
 };
+async function shareText(text, url) {
+  try {
+    if (navigator.share) { await navigator.share({ title: 'SombraRoute trip', text, url }); return; }
+    await navigator.clipboard.writeText(text + ' ' + url); toast('Trip copied — paste it to a friend');
+  } catch (e) { if (e.name !== 'AbortError') toast('Could not share — try again'); }  // AbortError = user cancelled the share sheet
+}
+$('share').onclick = () => {
+  if (!last) return;
+  const focus = last.routes.find((r) => r.name === (selected || last.recommended)), url = gmapsUrl(focus);
+  shareText(`I'm walking from ${$('from').value} to ${$('to').value} via ${focus.name}, leaving ${fmtHour(+$('hour').value)}, about ${mins(focus.distance_m)}. Route:`, url);
+};
+const near = () => $('from').value.trim() || 'your start point';
+function closeSos() { $('sospanel').hidden = true; $('sos').focus(); }
+$('sos').onclick = () => { $('sosnear').textContent = near(); $('sospanel').hidden = false; $('sospanel').querySelector('.call').focus(); };
+$('soscancel').onclick = closeSos;
+$('sosshare').onclick = () => {
+  const a = startPin.getLatLng();
+  shareText(`I need help. I'm near ${near()}.`, `https://www.google.com/maps/search/?api=1&query=${a.lat.toFixed(5)},${a.lng.toFixed(5)}`);
+};
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sospanel').hidden) closeSos(); });
 $('closechat').onclick = () => $('chat').classList.remove('open');
 $('compose').addEventListener('submit', (e) => { e.preventDefault(); const q = $('q').value; $('q').value = ''; ask(q); });
 document.querySelectorAll('.suggest button').forEach((b) => b.onclick = () => ask(b.dataset.q));
