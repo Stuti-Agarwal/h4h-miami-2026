@@ -183,6 +183,9 @@ const shadowLayer = L.geoJSON(null, { style: { color: '#3c4043', weight: 0, fill
 const routeLayer = L.layerGroup().addTo(map);
 const pin = (color) => L.divIcon({ className: '', iconSize: [28, 36], iconAnchor: [14, 34],
   html: `<svg width="28" height="36" viewBox="0 0 12 16"><path d="M6 0C2.7 0 0 2.6 0 5.8 0 10 6 16 6 16s6-6 6-10.2C12 2.6 9.3 0 6 0z" fill="${color}"/><circle cx="6" cy="6" r="2.2" fill="#fff"/></svg>` });
+const SHIELD = (w, fill) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align:-2px"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z" fill="${fill}"/></svg>`;
+const SAFE_ICON = L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+  html: `<svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="#188038" stroke="#fff" stroke-width="1.5"/><path d="M11 4.5l5 1.9v3.8c0 3.1-2.1 5.9-5 6.9-2.9-1-5-3.8-5-6.9V6.4z" fill="#fff"/><path d="M11 7.5v5M8.5 10h5" stroke="#188038" stroke-width="1.6" stroke-linecap="round"/></svg>` });
 const startPin = L.marker(DEMO.from, { draggable: true, icon: pin('#1a73e8'), title: 'Start (drag to move)' }).addTo(map);
 const endPin = L.marker(DEMO.to, { draggable: true, icon: pin('#ea4335'), title: 'Destination (drag to move)' }).addTo(map);
 let custom = false, lang = 'English', last = null, selected = null, ticket = 0, history = [];
@@ -219,6 +222,18 @@ function draw() {
       L.polyline([[s[i - 1].lat, s[i - 1].lon], [s[i].lat, s[i].lon]],
         { color: good ? (day ? '#1a73e8' : '#fdd663') : (day ? '#f9ab00' : '#3c4043'), weight: 6, opacity: 1, interactive: false }).addTo(routeLayer);
     }
+    // Under I-95/I-395: dashed grey on top so the overpass stretches stand out.
+    for (let i = 1; i < s.length; i++) {
+      if (s[i].under) L.polyline([[s[i - 1].lat, s[i - 1].lon], [s[i].lat, s[i].lon]],
+        { color: '#5f6368', weight: 4, opacity: 1, dashArray: '4 6', interactive: false }).addTo(routeLayer);
+    }
+    // Places to step inside along this route (markers sit in the marker pane, above the lines).
+    for (const st of r.safe_stops || []) {
+      const label = `${st.name} · ${String(st.category).replace(/_/g, ' ')}`;
+      L.marker([st.lat, st.lon], { icon: SAFE_ICON, title: label, alt: label })
+        .bindTooltip(esc(label), { direction: 'top', offset: [0, -10] })
+        .bindPopup(esc(st.name)).addTo(routeLayer);
+    }
   }
 }
 
@@ -234,9 +249,13 @@ function render() {
     const detail = (day ? `${km(r.sun_exposed_m)} in direct sun · ${Math.round(r.shade * 100)}% shaded`
                         : `Longest dark stretch ${r.longest_dark_m} m · ${Math.round(r.lit * 100)}% lit`)
                    + (r.under_highway_m ? ` · ${r.under_highway_m} m under highways` : '');
+    const nStops = (r.safe_stops || []).length;
+    const safety = [nStops ? `${nStops} safe stop${nStops === 1 ? '' : 's'}` : '',
+                    typeof r.incidents_per_km === 'number' ? `${r.incidents_per_km.toFixed(1)} reported incidents/km` : ''].filter(Boolean).join(' · ');
     return `<button class="route ${best ? 'best' : ''}" data-name="${esc(r.name)}" style="${mine && !best ? 'border-color:#202124' : ''}">
       <span class="top"><span>${esc(r.name)}</span>${best ? `<span class="badge">${day ? 'Shadiest' : 'Brightest'}</span>` : `<span class="sub">${mins(r.distance_m)}</span>`}</span>
       <span class="sub">${best ? `<b style="color:#188038">${mins(r.distance_m)}</b> (${km(r.distance_m)}) · ` : `${km(r.distance_m)} · `}${detail}</span>
+      ${safety ? `<span class="sub">${SHIELD(12, '#188038')} ${esc(safety)}</span>` : ''}
       <span class="bar"><span style="width:${Math.round(good * 100)}%;background:${day ? '#1a73e8' : '#fdd663'}"></span><span style="flex:1;background:${day ? '#fde293' : '#5f6368'}"></span></span>
     </button>`;
   }).join('');
