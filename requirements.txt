@@ -4,3 +4,5 @@ shapely>=2
 suncalc
 duckdb  # scripts/fetch_overture.py only
 flask
+python-dotenv
+requests

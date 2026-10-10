@@ -4,8 +4,12 @@ import math
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
 
+load_dotenv()
+
+from app.gemma import summarize  # noqa: E402
 from app.scoring import BBOX, DATA, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer
 
 MIAMI = ZoneInfo("America/New_York")
@@ -29,15 +33,26 @@ def index():
     return send_from_directory(app.static_folder, "index.html")
 
 
-@app.get("/api/routes")
-def score_routes():
-    when = _when()
+def _rank(when):
     scored = [{"name": n, "geometry": r["geometry"], **scorer.score(r["geometry"]["coordinates"], when)}
               for n, r in routes.items()]
     day = scored[0]["daylight"]
     key = (lambda r: r["sun_exposed_m"]) if day else (lambda r: r["longest_dark_m"])
     scored.sort(key=key)
-    return jsonify({"when": when.isoformat(), "daylight": day, "recommended": scored[0]["name"], "routes": scored})
+    return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "recommended": scored[0]["name"], "routes": scored}
+
+
+@app.get("/api/routes")
+def score_routes():
+    return jsonify(_rank(_when()))
+
+
+@app.get("/api/summary")
+def summary():
+    lang = request.args.get("lang", "English")
+    if lang not in ("English", "Spanish", "Haitian Creole"):
+        lang = "English"
+    return jsonify(summarize(_rank(_when()), lang))
 
 
 @app.get("/api/shadows")

@@ -28,6 +28,11 @@
   .metric { font-size:13px; color:var(--muted); margin-top:4px; }
   .bar { height:6px; border-radius:3px; background:#e2e8f0; margin-top:8px; overflow:hidden; } .bar i { display:block; height:100%; background:var(--shade); }
   .note { font-size:11px; color:var(--muted); margin-top:16px; }
+  .ai { background:linear-gradient(135deg,#f0fdfa,#eef2ff); border-radius:12px; padding:12px 14px; margin-bottom:14px; }
+  .ai-head { display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:13px; }
+  .ai-head select { font:inherit; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; }
+  .ai-text { font-size:14px; margin-top:6px; min-height:40px; } .ai-text.loading { color:var(--muted); }
+  .ai-engine { font-size:10px; color:var(--muted); margin-top:6px; }
   #map { height:100vh; } #map .leaflet-tile-pane { filter: grayscale(.85) brightness(1.05); }
   .legend { background:#fff; padding:8px 10px; border-radius:8px; font-size:12px; line-height:1.7; box-shadow:0 1px 4px #0002; }
   .legend i { display:inline-block; width:18px; height:4px; margin-right:6px; vertical-align:middle; border-radius:2px; }
@@ -44,6 +49,11 @@
   <div class="ticks"><span>6 AM</span><span>noon</span><span>6 PM</span><span>11 PM</span></div>
   <div class="date">Date <input type="date" id="date" value="2026-10-10"></div>
 
+  <div class="ai">
+    <div class="ai-head"><span>✨ Gemma 4 says</span>
+      <select id="lang"><option>English</option><option value="Spanish">Español</option><option value="Haitian Creole">Kreyòl</option></select></div>
+    <div id="summary" class="ai-text">…</div><div id="engine" class="ai-engine"></div>
+  </div>
   <div id="routes"></div>
   <div class="note">Shade = Overture building shadows from the sun's position + Miami-Dade 2021 tree canopy. Night = county-maintained street lights + venues likely open late. Street lights maintained by the city or FPL aren't included yet.</div>
 </aside>
@@ -127,8 +137,20 @@ async function update() {
   last = routes;
   shadowLayer.clearLayers().addData(shadows);
   render();
+  loadSummary(q, ticket);
 }
 
+async function loadSummary(q, ticket) {
+  $('summary').className = 'ai-text loading';
+  $('summary').textContent = 'Thinking about your walk…';
+  const s = await fetch(`/api/summary${q}&lang=${encodeURIComponent($('lang').value)}`).then((r) => r.json());
+  if (ticket !== pending) return;
+  $('summary').className = 'ai-text';
+  $('summary').textContent = s.text;
+  $('engine').textContent = s.engine === 'none' ? '' : `via ${s.engine}`;
+}
+
+$('lang').addEventListener('change', () => loadSummary(`?date=${$('date').value}&hour=${$('hour').value}`, pending));
 let t;
 $('hour').addEventListener('input', () => { $('clock').textContent = fmtHour(+$('hour').value); clearTimeout(t); t = setTimeout(update, 150); });
 $('date').addEventListener('change', update);

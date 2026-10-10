@@ -6,7 +6,7 @@ Our project for [Hack for Humanity: Miami](https://github.com/AI-Collective-Hack
 
 - **Build for Miami track:** 01 Four Forces, One City
 - **MLH challenges entered:** Best Open-Source AI Project · Best Use of Gemma 4
-- **Model(s) used:** _TBD — exact Gemma 4 model name used via the Gemini API_
+- **Model(s) used:** Gemma 4 `gemma-4-26b-a4b-it` via the Gemini API (route summaries in English, Spanish, Haitian Creole); local fallback `gemma4:e4b-it-qat` via Ollama
 
 ## What it does
 
