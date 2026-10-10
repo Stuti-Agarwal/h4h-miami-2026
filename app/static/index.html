@@ -89,8 +89,8 @@
   .chips::-webkit-scrollbar { display:none; }
   .chip { flex:none; }
   .actions > .primary, .actions > .secondary { padding:0 10px; gap:6px; }
-  body.transit #routes { display:none !important; }
-  body.transit #start, #transit, #navbar, #endnav { display:none; }
+  body.transit:not(.legs) #routes { display:none !important; }
+  body.transit:not(.legs) #start, #transit, #navbar, #endnav { display:none; }
   body.transit #transit { display:flex; }
   #transit { flex-direction:column; gap:10px; }
   #transit h3 { margin:0; font-size:14px; font-weight:500; }
@@ -245,7 +245,7 @@ const mins = (m) => Math.round(m / 80) + ' min';  // ~4.8 km/h walking
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function toast(text) { const t = $('toast'); t.textContent = text; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 4000); }
 function params() {
-  const p = new URLSearchParams({ hour: $('hour').value, date: '2026-10-10', lang, goal });
+  const p = new URLSearchParams({ hour: $('hour').value, date: '2026-10-10', lang, goal, mode: transitMode ? 'transit' : 'walk' });
   if (custom) { const a = startPin.getLatLng(), b = endPin.getLatLng(); p.set('from', `${a.lng},${a.lat}`); p.set('to', `${b.lng},${b.lat}`); }
   return p;
 }
@@ -261,6 +261,7 @@ function draw() {
   for (const r of [...last.routes].reverse()) {
     const pts = r.geometry.coordinates.map(([x, y]) => [y, x]);
     if (r.name !== focus) {
+      if (nav) continue;  // walking view: only the chosen route
       L.polyline(pts, { color: '#bdc1c6', weight: 7, opacity: .9 }).on('click', () => { selected = r.name; render(); }).addTo(routeLayer);
       continue;
     }
@@ -276,6 +277,11 @@ function draw() {
       if (s[i].under) L.polyline([[s[i - 1].lat, s[i - 1].lon], [s[i].lat, s[i].lon]],
         { color: '#5f6368', weight: 4, opacity: 1, dashArray: '4 6', interactive: false }).addTo(routeLayer);
     }
+    // Transit legs (mode=transit): dashed purple on top of the walk colouring.
+    for (const l of r.legs || []) {
+      if (l.type !== 'transit' || !l.geometry || !Array.isArray(l.geometry.coordinates)) continue;
+      L.polyline(l.geometry.coordinates.map(([x, y]) => [y, x]), { color: '#9334e6', weight: 6, opacity: 1, dashArray: '10 8', interactive: false }).addTo(routeLayer);
+    }
     // Places to step inside along this route (markers sit in the marker pane, above the lines).
     for (const st of r.safe_stops || []) {
       const label = `${st.name} · ${String(st.category).replace(/_/g, ' ')}`;
@@ -286,9 +292,15 @@ function draw() {
   }
 }
 
+// "Walk 0.3 mi → Metromover Omni Loop from X to Y 1.1 mi → Walk 0.4 mi"; '' when the backend sent no legs.
+const legsText = (r) => Array.isArray(r.legs) && r.legs.length ? r.legs.map((l) => l.type === 'transit'
+  ? [l.line || 'Transit', l.from && `from ${l.from}`, l.to && `to ${l.to}`, l.distance_m != null && km(l.distance_m)].filter(Boolean).join(' ')
+  : `Walk${l.distance_m != null ? ' ' + km(l.distance_m) : ''}`).join(' → ') : '';
 function render() {
   const day = last.daylight;
   document.body.classList.toggle('night', !day);
+  // Transit mode with real legs from the backend: show route cards instead of the stops-only board.
+  document.body.classList.toggle('legs', transitMode && last.routes.some((r) => Array.isArray(r.legs) && r.legs.length));
   const busy = (last.goal || goal) === 'busy';  // server ranks by busy streets after dark even in auto
   $('mode').textContent = busy ? 'Busy streets · storefronts + traffic' : day ? 'Day · least sun' : 'Night · lit & busy';
   $('goalchip').textContent = day ? 'Shadiest' : 'Busy & lit';
@@ -311,6 +323,7 @@ function render() {
       <span class="top"><span>${esc(r.name)}</span>${best ? `<span class="badge">${busy ? 'Busiest' : day ? 'Shadiest' : 'Brightest'}</span>` : `<span class="sub">${mins(r.distance_m)}</span>`}</span>
       <span class="sub">${best ? `<b style="color:#188038">${mins(r.distance_m)}</b> (${km(r.distance_m)}) · ` : `${km(r.distance_m)} · `}${detail}</span>
       ${safety ? `<span class="sub">${SHIELD(12, '#188038')} ${esc(safety)}</span>` : ''}
+      ${legsText(r) ? `<span class="sub" style="color:#7627bb">${esc(legsText(r))}</span>` : ''}
       <span class="bar"><span style="width:${Math.round(good * 100)}%;background:${busy || day ? '#1a73e8' : '#fdd663'}"></span><span style="flex:1;background:${busy ? '#e8eaed' : day ? '#fde293' : '#5f6368'}"></span></span>
     </button>`;
   }).join('');
@@ -549,8 +562,8 @@ function setTransit(on) {
   $('walkchip').setAttribute('aria-pressed', String(!on)); $('transitchip').setAttribute('aria-pressed', String(on));
   document.body.classList.toggle('transit', on);
   transitLayer.clearLayers(); ++transitSeq;
-  if (last) render();
-  if (on) loadTransit();
+  if (last) update(true);  // re-fetch routes/summary with the new mode (update loads transit stops too)
+  else if (on) loadTransit();
 }
 $('walkchip').onclick = () => transitMode && setTransit(false);
 $('transitchip').onclick = () => !transitMode && setTransit(true);
@@ -590,11 +603,13 @@ function startNav() {
   const r = last.routes.find((x) => x.name === (selected || last.recommended));
   const pts = r.geometry.coordinates.map(([x, y]) => [y, x]), cum = [0];
   for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + hav(pts[i - 1], pts[i]));
-  nav = { pts, cum, total: cum[cum.length - 1], follow: true, stops: [] };
+  nav = { pts, cum, total: cum[cum.length - 1], follow: false, stops: [] };
   nav.stops = (r.safe_stops || []).map((s) => ({ name: s.name, along: cum[nearestIdx([s.lat, s.lon])[0]] })).sort((a, b) => a.along - b.along);
   document.body.classList.add('nav'); closeSugg();
   $('navname').textContent = r.name; $('navnote').textContent = 'Finding your location…';
-  map.setView(pts[0], 17); showProgress(pts[0], 0);
+  draw();  // hides the other routes
+  map.fitBounds(L.latLngBounds(pts), window.innerWidth >= 760 ? { paddingTopLeft: [440, 40], paddingBottomRight: [40, 40] } : { paddingTopLeft: [20, 40], paddingBottomRight: [20, 140] });
+  showProgress(pts[0], 0);
   $('endnav').focus();
   if (!navigator.geolocation || !window.isSecureContext) { startPreview('GPS unavailable — preview'); return; }
   // No fix within a few seconds (desktop, denied, indoors) -> preview so the demo still moves.
@@ -613,7 +628,7 @@ function endNav() {
   if (!nav) return;
   if (nav.watch != null) navigator.geolocation.clearWatch(nav.watch);
   clearTimeout(nav.wait); clearInterval(nav.timer); nav = null;
-  meDot.remove(); meAcc.remove(); document.body.classList.remove('nav');
+  meDot.remove(); meAcc.remove(); document.body.classList.remove('nav'); draw();
   map.fitBounds(L.latLngBounds(last.routes.flatMap((r) => r.geometry.coordinates.map(([x, y]) => [y, x]))),
     window.innerWidth >= 760 ? { paddingTopLeft: [440, 40], paddingBottomRight: [40, 40] } : { paddingTopLeft: [20, 170], paddingBottomRight: [20, window.innerHeight * .5] });
   $('start').focus();

@@ -5,7 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 
 import requests
-from shapely import LineString
+from shapely import LineString, Point
+from shapely.ops import substring
 
 from app.scoring import BBOX, DATA, to_m
 
@@ -177,3 +178,85 @@ def nearest_transit(lon, lat, n=3):
     if station and station not in top and top:
         top[-1] = station
     return top
+
+
+MIN_RIDE_M = 400
+
+
+@lru_cache(maxsize=1)
+def _mover_lines():
+    """Metromover loops from data/transit.geojson (scripts/fetch_transit.py): [(name, metric LineString, closed,
+    [(stop name, distance along line), ...] in service order)]."""
+    feats = json.loads((DATA / "transit.geojson").read_text())["features"]
+    out = []
+    for f in feats:
+        p = f["properties"]
+        if f["geometry"]["type"] != "LineString" or p["kind"] != "metromover":
+            continue
+        line = LineString([to_m(x, y) for x, y in f["geometry"]["coordinates"]])
+        stops, at = [], 0.0
+        for s in sorted((s for s in feats if s["geometry"]["type"] == "Point" and s["properties"]["line"] == p["line"]),
+                        key=lambda s: s["properties"]["order"]):
+            # project onto the track past the previous stop, so out-and-back loops keep the stop sequence
+            pt = Point(to_m(*s["geometry"]["coordinates"]))
+            at += substring(line, at, line.length).project(pt)
+            stops.append((s["properties"]["name"], at))
+        out.append((p["line"], line, line.coords[0] == line.coords[-1], stops))
+    return out
+
+
+def _from_m(x, y):
+    m_lon, m_lat = to_m(1 + BBOX[0], 1 + BBOX[1])
+    return [round(x / m_lon + BBOX[0], 6), round(y / m_lat + BBOX[1], 6)]
+
+
+@lru_cache(maxsize=128)
+def _walk(a, b):
+    """Shortest OSRM foot route a -> b as [[lon, lat], ...]; straight line if OSRM fails."""
+    try:
+        routes = _osrm([a, b])
+        if routes:
+            return routes[0]["geometry"]["coordinates"]
+    except requests.RequestException:
+        pass
+    return [list(a), list(b)]
+
+
+def _length(coords):
+    return LineString([to_m(x, y) for x, y in coords]).length if len(coords) > 1 else 0.0
+
+
+@lru_cache(maxsize=64)
+def transit_option(start, end):
+    """Walk -> Metromover -> walk from start to end ((lon, lat) tuples), or None if riding saves nothing.
+    Picks the board/alight pair (in service order) with the least straight-line walking."""
+    p0, p1 = to_m(*start), to_m(*end)
+    best = None
+    for name, line, closed, stops in _mover_lines():
+        for i, (bn, ba) in enumerate(stops):
+            for j, (an, aa) in enumerate(stops):
+                if i == j or (j < i and not closed):
+                    continue
+                walk = math.dist(p0, line.interpolate(ba).coords[0]) + math.dist(line.interpolate(aa).coords[0], p1)
+                if best is None or walk < best[0]:
+                    best = (walk, name, line, bn, ba, an, aa)
+    if best is None:
+        return None
+    walk, name, line, bn, ba, an, aa = best
+    if ba <= aa:
+        ride = list(substring(line, ba, aa).coords)
+    else:  # closed loop: wrap past the end
+        ride = list(substring(line, ba, line.length).coords) + list(substring(line, 0, aa).coords)[1:]
+    ride_m = LineString(ride).length
+    if bn == an or ride_m < MIN_RIDE_M or walk >= math.dist(p0, p1):
+        return None
+    ride = [_from_m(x, y) for x, y in ride]
+    first, last = _walk(start, tuple(ride[0])), _walk(tuple(ride[-1]), end)
+    legs = [{"type": "walk", "line": None, "from": None, "to": bn, "distance_m": round(_length(first)),
+             "geometry": {"type": "LineString", "coordinates": first}},
+            {"type": "transit", "line": f"Metromover {name}", "from": bn, "to": an, "distance_m": round(ride_m),
+             "geometry": {"type": "LineString", "coordinates": ride}},
+            {"type": "walk", "line": None, "from": an, "to": None, "distance_m": round(_length(last)),
+             "geometry": {"type": "LineString", "coordinates": last}}]
+    return {"distance_m": sum(leg["distance_m"] for leg in legs), "legs": legs,
+            "geometry": {"type": "LineString", "coordinates": first + ride + last}}

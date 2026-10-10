@@ -10,11 +10,13 @@ from shapely import LineString, unary_union
 load_dotenv()
 
 from app.gemma import chat, summarize  # noqa: E402
-from app.routing import candidates, geocode, in_bbox, nearest_transit, suggest  # noqa: E402
+from app.routing import candidates, geocode, in_bbox, nearest_transit, suggest, transit_option  # noqa: E402
 from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes, search_places, to_m  # noqa: E402
 
 INCIDENT_W = 20  # routes run 25-64/km; +5/km = 100 m flips a close call, a ~900 m shade lead survives 2x the rate
 GOALS = ("auto", "busy")
+MODES = ("walk", "transit")
+TRANSIT_NAME = "Metromover + walk"
 MIAMI = ZoneInfo("America/New_York")
 LANGS = ("English", "Spanish", "Haitian Creole")
 app = Flask(__name__, static_folder="static")
@@ -59,6 +61,38 @@ def _routes(args):
     return found
 
 
+def _mode(args):
+    mode = args.get("mode", "walk")
+    return mode if mode in MODES else "walk"
+
+
+def _with_transit(routes):
+    """Walking routes as single walk legs, plus the Metromover option when riding saves walking."""
+    out = {n: {**r, "legs": [{"type": "walk", "line": None, "from": None, "to": None, "distance_m": r["distance_m"],
+                              "geometry": r["geometry"]}]} for n, r in routes.items()}
+    coords = next(iter(routes.values()))["geometry"]["coordinates"]
+    option = transit_option(tuple(coords[0]), tuple(coords[-1]))
+    if option:
+        out[TRANSIT_NAME] = option
+    return out
+
+
+def _score(r, when):
+    """Walking route: score the geometry. Transit route: score only the walk legs, merged length-weighted."""
+    if "legs" not in r or len(r["legs"]) == 1:
+        return scorer.score(r["geometry"]["coordinates"], when)
+    parts = [scorer.score(leg["geometry"]["coordinates"], when) for leg in r["legs"] if leg["type"] == "walk"]
+    walk = sum(p["distance_m"] for p in parts) or 1
+    avg = lambda k, nd: round(sum(p[k] * p["distance_m"] for p in parts) / walk, nd)
+    return {**parts[0],
+            **{k: avg(k, 3) for k in ("shade", "building_shade", "tree_shade", "lit", "active", "transit")},
+            **{k: sum(p[k] for p in parts) for k in ("sun_exposed_m", "under_highway_m")},
+            **{k: avg(k, 1) for k in ("incidents_per_km", "storefronts_per_km")},
+            "distance_m": r["distance_m"], "walk_m": sum(p["distance_m"] for p in parts),
+            "longest_dark_m": max(p["longest_dark_m"] for p in parts), "traffic_aadt": round(avg("traffic_aadt", 0)),
+            "safe_stops": [s for p in parts for s in p["safe_stops"]], "samples": [s for p in parts for s in p["samples"]]}
+
+
 def _goal(args):
     goal = args.get("goal", "auto")
     return goal if goal in GOALS else "auto"
@@ -77,15 +111,18 @@ def _key(r, goal, base):
 
 
 def _rank(args):
-    when, goal = _when(args), _goal(args)
-    scored = [{"name": n, "geometry": r["geometry"], **scorer.score(r["geometry"]["coordinates"], when)}
-              for n, r in _routes(args).items()]
+    when, goal, mode = _when(args), _goal(args), _mode(args)
+    routes = _routes(args)
+    if mode == "transit":
+        routes = _with_transit(routes)
+    scored = [{"name": n, "geometry": r["geometry"], **_score(r, when), **({"legs": r["legs"]} if "legs" in r else {})}
+              for n, r in routes.items()]
     day = scored[0]["daylight"]
     if not day:  # after dark, busy streets (storefronts, passing cars) are the safety signal, so auto ranks as busy
         goal = "busy"
     base = "sun_exposed_m" if day else "longest_dark_m"
     scored.sort(key=lambda r: _key(r, goal, base))
-    return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "goal": goal,
+    return {"when": when.strftime("%A %b %d, %I:%M %p"), "daylight": day, "goal": goal, "mode": mode,
             "recommended": scored[0]["name"], "routes": scored}
 
 
