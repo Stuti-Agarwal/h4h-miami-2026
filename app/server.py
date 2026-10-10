@@ -1,5 +1,4 @@
 """Flask app: serves the map page and scores the cached demo routes for a chosen time."""
-import json
 import math
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
@@ -10,12 +9,12 @@ from flask import Flask, jsonify, request, send_from_directory
 load_dotenv()
 
 from app.gemma import summarize  # noqa: E402
-from app.scoring import BBOX, DATA, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer
+from app.scoring import BBOX, M_PER_DEG_LAT, M_PER_DEG_LON, Scorer, load_routes
 
 MIAMI = ZoneInfo("America/New_York")
 app = Flask(__name__, static_folder="static")
 scorer = Scorer()
-routes = json.loads((DATA / "routes.json").read_text())
+routes = load_routes()
 
 
 def _when():

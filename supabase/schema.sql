@@ -1,0 +1,34 @@
+-- Run once in the Supabase SQL editor (or via scripts/load_supabase.py).
+create extension if not exists postgis;
+
+create table if not exists buildings (
+  id bigserial primary key,
+  geom geometry(Geometry, 4326) not null,
+  height real,
+  num_floors int
+);
+create table if not exists places (
+  id bigserial primary key,
+  geom geometry(Point, 4326) not null,
+  name text,
+  category text,
+  confidence real
+);
+create table if not exists lights (
+  id bigserial primary key,
+  geom geometry(Point, 4326) not null
+);
+create table if not exists stops (
+  id bigserial primary key,
+  geom geometry(Point, 4326) not null
+);
+create table if not exists routes (
+  name text primary key,
+  distance_m int not null,
+  geom geometry(LineString, 4326) not null
+);
+
+create index if not exists buildings_geom on buildings using gist (geom);
+create index if not exists places_geom on places using gist (geom);
+create index if not exists lights_geom on lights using gist (geom);
+create index if not exists stops_geom on stops using gist (geom);

@@ -6,3 +6,4 @@ duckdb  # scripts/fetch_overture.py only
 flask
 python-dotenv
 requests
+psycopg[binary]

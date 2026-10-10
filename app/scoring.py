@@ -1,6 +1,7 @@
 """Score walking routes for shade (day) and lit, active streets (night)."""
 import json
 import math
+import os
 import pathlib
 from datetime import datetime
 
@@ -31,8 +32,31 @@ def to_m(lon, lat):
     return (lon - BBOX[0]) * M_PER_DEG_LON, (lat - BBOX[1]) * M_PER_DEG_LAT
 
 
+COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": []}
+
+
 def _load(name):
-    return json.loads((DATA / f"{name}.geojson").read_text())["features"]
+    """Features from Supabase when SUPABASE_DB_URL is set, else from the local data/ extract."""
+    url = os.environ.get("SUPABASE_DB_URL")
+    if not url:
+        return json.loads((DATA / f"{name}.geojson").read_text())["features"]
+    import psycopg
+
+    cols = COLUMNS[name]
+    with psycopg.connect(url) as conn:
+        rows = conn.execute(f"select ST_AsGeoJSON(geom){''.join(', ' + c for c in cols)} from {name}").fetchall()
+    return [{"geometry": json.loads(r[0]), "properties": dict(zip(cols, r[1:]))} for r in rows]
+
+
+def load_routes():
+    url = os.environ.get("SUPABASE_DB_URL")
+    if not url:
+        return json.loads((DATA / "routes.json").read_text())
+    import psycopg
+
+    with psycopg.connect(url) as conn:
+        rows = conn.execute("select name, distance_m, ST_AsGeoJSON(geom) from routes order by name").fetchall()
+    return {n: {"distance_m": d, "geometry": json.loads(g)} for n, d, g in rows}
 
 
 def _points(features):
