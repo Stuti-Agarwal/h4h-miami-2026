@@ -22,6 +22,10 @@ create table if not exists stops (
   id bigserial primary key,
   geom geometry(Point, 4326) not null
 );
+create table if not exists osm_lit (  -- OSM street lamps (points) and lit=yes streets (lines)
+  id bigserial primary key,
+  geom geometry(Geometry, 4326) not null
+);
 create table if not exists routes (
   name text primary key,
   distance_m int not null,
@@ -32,3 +36,4 @@ create index if not exists buildings_geom on buildings using gist (geom);
 create index if not exists places_geom on places using gist (geom);
 create index if not exists lights_geom on lights using gist (geom);
 create index if not exists stops_geom on stops using gist (geom);
+create index if not exists osm_lit_geom on osm_lit using gist (geom);

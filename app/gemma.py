@@ -6,7 +6,7 @@ import requests
 PROMPT = """You are a walking guide in Miami. Recommend one route for a pedestrian in {language}, in 3 short sentences.
 It is {when} ({mode}). Routes were ranked by {rule}.
 The recommended route is {best}. Recommend {best} and say why, comparing it with the others.
-Describe streets only by shade, lighting and open businesses. Never call a neighborhood or its people unsafe.
+Describe streets only by shade, lighting and open businesses. Never call a neighborhood or its people unsafe. Stick to the numbers given and do not exaggerate.
 Routes (distance, sun-exposed metres, % shaded, longest dark stretch at night, % near open venues):
 {routes}"""
 

@@ -18,7 +18,7 @@ M_PER_DEG_LON = 111_320 * math.cos(math.radians(LAT0))
 M_PER_DEG_LAT = 110_540
 TREE = 6
 STEP_M = 10
-LIT_M, ACTIVE_M, ACTIVE_MIN, TRANSIT_M = 30, 50, 3, 100
+LIT_M, LIT_WAY_M, ACTIVE_M, ACTIVE_MIN, TRANSIT_M = 30, 15, 50, 3, 100
 MAX_SHADOW_M = 300
 # Places likely open after dark; offices/services count only by day.
 EVENING = {
@@ -32,7 +32,7 @@ def to_m(lon, lat):
     return (lon - BBOX[0]) * M_PER_DEG_LON, (lat - BBOX[1]) * M_PER_DEG_LAT
 
 
-COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": []}
+COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": [], "osm_lit": []}
 
 
 def _load(name):
@@ -86,7 +86,11 @@ class Scorer:
             for f in _load("buildings") for ring in _outer_rings(f["geometry"])
         ]
         places = [f for f in _load("places") if (f["properties"].get("confidence") or 0) >= 0.6]
-        self.lights = STRtree(_points(_load("lights")))
+        osm = _load("osm_lit")
+        osm_lamps = [f for f in osm if f["geometry"]["type"] == "Point"]
+        self.lights = STRtree(_points(_load("lights")) + _points(osm_lamps))
+        self.lit_ways = STRtree([LineString([to_m(x, y) for x, y in f["geometry"]["coordinates"]])
+                                 for f in osm if f["geometry"]["type"] == "LineString"])
         self.places = STRtree(_points(places))
         self.evening_places = STRtree(_points([f for f in places if f["properties"].get("category") in EVENING]))
         self.stops = STRtree(_points(_load("stops")))
@@ -129,7 +133,8 @@ class Scorer:
         else:
             in_bldg = in_tree = shaded = [False] * len(samples)
 
-        lit = [len(self.lights.query(p, predicate="dwithin", distance=LIT_M)) > 0 for p in samples]
+        lit = [len(self.lights.query(p, predicate="dwithin", distance=LIT_M)) > 0
+               or len(self.lit_ways.query(p, predicate="dwithin", distance=LIT_WAY_M)) > 0 for p in samples]
         places = self.places if shadows is not None else self.evening_places
         active = [len(places.query(p, predicate="dwithin", distance=ACTIVE_M)) >= ACTIVE_MIN for p in samples]
         transit = [len(self.stops.query(p, predicate="dwithin", distance=TRANSIT_M)) > 0 for p in samples]
@@ -147,7 +152,7 @@ class Scorer:
             "building_shade": frac(in_bldg),
             "tree_shade": frac(in_tree),
             "sun_exposed_m": round(line.length * (1 - frac(shaded))),
-            "lit": frac(lit),  # county-maintained lights only; city/FPL lights are missing
+            "lit": frac(lit),  # county lights + OSM lamps and lit=yes streets; still incomplete
             "active": frac(active),
             "transit": frac(transit),
             "longest_dark_m": longest_dark * STEP_M,

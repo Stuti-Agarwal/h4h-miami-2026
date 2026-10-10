@@ -13,6 +13,7 @@ COLUMNS = {
     "places": ["name", "category", "confidence"],
     "lights": [],
     "stops": [],
+    "osm_lit": [],
 }
 
 
