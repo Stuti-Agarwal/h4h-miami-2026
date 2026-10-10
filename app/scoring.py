@@ -3,6 +3,7 @@ import json
 import math
 import os
 import pathlib
+import sqlite3
 from datetime import datetime
 
 import numpy as np
@@ -12,6 +13,7 @@ from shapely.affinity import translate
 from suncalc import get_position
 
 DATA = pathlib.Path(__file__).resolve().parent.parent / "data"
+DB = DATA / "sombra.db"  # built by scripts/build_sqlite.py
 BBOX = (-80.212, 25.765, -80.184, 25.807)  # must match the bbox used by scripts/fetch_*.py
 LAT0 = (BBOX[1] + BBOX[3]) / 2
 M_PER_DEG_LON = 111_320 * math.cos(math.radians(LAT0))
@@ -35,27 +37,27 @@ def to_m(lon, lat):
 COLUMNS = {"buildings": ["height", "num_floors"], "places": ["name", "category", "confidence"], "lights": [], "stops": [], "osm_lit": []}
 
 
-def _load(name):
-    """Features from Supabase when SUPABASE_DB_URL is set, else from the local data/ extract."""
+def _query(sqlite_sql, postgis_sql):
+    """Rows from Supabase when SUPABASE_DB_URL is set, else from the local SQLite db."""
     url = os.environ.get("SUPABASE_DB_URL")
-    if not url:
-        return json.loads((DATA / f"{name}.geojson").read_text())["features"]
-    import psycopg
+    if url:
+        import psycopg
 
-    cols = COLUMNS[name]
-    with psycopg.connect(url) as conn:
-        rows = conn.execute(f"select ST_AsGeoJSON(geom){''.join(', ' + c for c in cols)} from {name}").fetchall()
-    return [{"geometry": json.loads(r[0]), "properties": dict(zip(cols, r[1:]))} for r in rows]
+        with psycopg.connect(url) as conn:
+            return conn.execute(postgis_sql).fetchall()
+    with sqlite3.connect(DB) as conn:
+        return conn.execute(sqlite_sql).fetchall()
+
+
+def _load(name):
+    cols = "".join(", " + c for c in COLUMNS[name])
+    rows = _query(f"select geom{cols} from {name}", f"select ST_AsGeoJSON(geom){cols} from {name}")
+    return [{"geometry": json.loads(r[0]), "properties": dict(zip(COLUMNS[name], r[1:]))} for r in rows]
 
 
 def load_routes():
-    url = os.environ.get("SUPABASE_DB_URL")
-    if not url:
-        return json.loads((DATA / "routes.json").read_text())
-    import psycopg
-
-    with psycopg.connect(url) as conn:
-        rows = conn.execute("select name, distance_m, ST_AsGeoJSON(geom) from routes order by name").fetchall()
+    rows = _query("select name, distance_m, geom from routes order by name",
+                  "select name, distance_m, ST_AsGeoJSON(geom) from routes order by name")
     return {n: {"distance_m": d, "geometry": json.loads(g)} for n, d, g in rows}
 
 

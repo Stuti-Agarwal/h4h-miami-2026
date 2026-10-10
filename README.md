@@ -14,7 +14,7 @@ Finds the shadiest walking route across Miami for a given time of day. Each cand
 
 ## Tech stack
 
-Python · Flask · Shapely · SunCalc · Leaflet + OpenStreetMap tiles · Gemma 4 via the Gemini API
+Python · Flask · SQLite (Supabase/PostGIS ready) · Shapely · SunCalc · Leaflet + OpenStreetMap tiles · Gemma 4 via the Gemini API
 
 ## Data sources
 
@@ -34,7 +34,14 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m app.server   # http://localhost:5050
 ```
 
-`data/` is committed, so no downloads are needed. To refresh it: `python scripts/fetch_overture.py && python scripts/fetch_county.py`.
+`data/` (including the SQLite store `data/sombra.db`) is committed, so no downloads are needed. To refresh it:
+
+```bash
+python scripts/fetch_overture.py && python scripts/fetch_county.py && python scripts/fetch_osm.py
+python scripts/build_sqlite.py
+```
+
+To use Supabase instead of SQLite, set `SUPABASE_DB_URL` in `.env` and run `python scripts/load_supabase.py`.
 
 ## Team
 
