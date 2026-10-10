@@ -27,7 +27,9 @@ Why it matters: heat is Miami's deadliest weather hazard, and the people who wal
 
 ## Tech stack
 
-Python · Flask · SQLite (Supabase/PostGIS ready) · Shapely · SunCalc · Leaflet + OpenStreetMap tiles · Gemma 4 via the Gemini API
+Next.js (React, TypeScript) frontend · Python · Flask API · SQLite (Supabase/PostGIS ready) · Shapely · SunCalc · Leaflet + OpenStreetMap tiles · Gemma 4 via the Gemini API
+
+Repo layout: `app/` Flask API + legacy single-page UI · `web/` Next.js frontend · `scripts/` data fetch/build · `data/` committed datasets + SQLite · `evals/` tests and Gemma evals · `supabase/` Postgres/PostGIS schema
 
 ## Data sources
 
@@ -51,8 +53,16 @@ Python · Flask · SQLite (Supabase/PostGIS ready) · Shapely · SunCalc · Leaf
 ```bash
 cp .env.example .env   # add your GEMINI_API_KEY
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m app.server   # http://localhost:5050 (and http://<your-laptop-ip>:5050 from a phone on the same Wi-Fi)
+.venv/bin/python -m app.server   # Flask API on http://localhost:5050
 ```
+
+Then, in a second terminal, start the Next.js frontend:
+
+```bash
+cd web && npm install && npm run dev   # http://localhost:3000
+```
+
+The web app proxies `/api/*` to Flask; set `FLASK_URL` if Flask isn't on the default `http://localhost:5050`. Fallback: Flask also serves the original single-page UI at http://localhost:5050 (and http://<your-laptop-ip>:5050 from a phone on the same Wi-Fi), so the Flask process alone is enough for a demo.
 
 `data/` (including the SQLite store `data/sombra.db`) is committed, so no downloads are needed. To refresh it:
 
