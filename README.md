@@ -41,6 +41,8 @@ python scripts/fetch_overture.py && python scripts/fetch_county.py && python scr
 python scripts/build_sqlite.py
 ```
 
+Evals (scoring regression tests + live Gemma summary checks): see [evals/README.md](evals/README.md).
+
 To use Supabase instead of SQLite, set `SUPABASE_DB_URL` in `.env` and run `python scripts/load_supabase.py`.
 
 ## Team

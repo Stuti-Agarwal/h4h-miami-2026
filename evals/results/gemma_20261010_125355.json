@@ -1,0 +1,175 @@
+{
+  "score": 1.0,
+  "results": [
+    {
+      "hour": 9,
+      "language": "English",
+      "reversed": false,
+      "recommended": "NW 2nd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "I recommend walking along NW 2nd Ave because it offers the fewest metres in direct sun compared to the other available routes. You will experience 52% shade and a mix of lighting throughout your 3914 m journey. About 51% of this path is located near open businesses for your convenience."
+    },
+    {
+      "hour": 9,
+      "language": "Spanish",
+      "reversed": false,
+      "recommended": "NW 2nd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "Te recomiendo caminar por NW 2nd Ave porque es la ruta con menos metros bajo el sol directo. Aunque otras calles ofrecen más sombra, esta opción te permite recorrer 3914 metros con la menor exposición solar. Encontrarás que el 51% de este trayecto cuenta con negocios abiertos para tu comodidad."
+    },
+    {
+      "hour": 9,
+      "language": "Haitian Creole",
+      "reversed": false,
+      "recommended": "NW 2nd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "Mache sou NW 2nd Ave paske se wout ki gen mwens met sou solèy la pou ou maten an. Travay sa a pi bon paske lòt lari yo gen plis distans anba gwo limyè solèy la. W ap jwenn anpil biznis ki louvri sou wout sa a pandan ou mache."
+    },
+    {
+      "hour": 16,
+      "language": "English",
+      "reversed": false,
+      "recommended": "NW 2nd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "I recommend walking along NW 2nd Ave because it offers the most shade among your options at 41% coverage. This route has 2317 metres in the sun, which is less direct sunlight than the other available paths. You will also find that 51% of the route is lined with open businesses to visit during your walk."
+    },
+    {
+      "hour": 16,
+      "language": "Spanish",
+      "reversed": false,
+      "recommended": "NW 2nd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "Te recomiendo caminar por NW 2nd Ave porque tiene más sombra que las rutas por NW 3rd Ave o N Miami Ave. Esta calle ofrece un recorrido más corto con 2317 metros bajo el sol, comparado con los mayores niveles de exposición de las otras opciones. Durante este sábado por la tarde, encontrarás un 51% de establecimientos abiertos a lo largo del camino."
+    },
+    {
+      "hour": 16,
+      "language": "Haitian Creole",
+      "reversed": false,
+      "recommended": "NW 2nd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "Mwen rekòmande ou mache sou NW 2nd Ave paske li gen plis lonbraj pase lòt chemen yo. Chimen sa a gen mwens kote ki an solèy dirèk epi anpil magazen louvri bò kote l. Se pi bon opsyon pou yon moun ki vle mache nan yon kote ki pa twò cho."
+    },
+    {
+      "hour": 21,
+      "language": "English",
+      "reversed": false,
+      "recommended": "NW 3rd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "I recommend walking along NW 3rd Ave because it offers the shortest stretch of darkness at 480 meters. While all routes are fully exposed to the night sky, this path features fewer unlit gaps than N Miami Ave, Biscayne Blvd, or NW 2nd Ave. You will also find that 24% of the route is located near open businesses."
+    },
+    {
+      "hour": 21,
+      "language": "Spanish",
+      "reversed": false,
+      "recommended": "NW 3rd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "Te recomiendo caminar por NW 3rd Ave porque tiene el tramo oscuro más corto de todas las opciones. Aunque no tiene sombra, esta ruta ofrece menos oscuridad que N Miami Ave, Biscayne Blvd o NW 2nd Ave. Además, cuenta con un 24% de locales abiertos cerca durante tu trayecto."
+    },
+    {
+      "hour": 21,
+      "language": "Haitian Creole",
+      "reversed": false,
+      "recommended": "NW 3rd Ave",
+      "engine": "ollama:gemma4:e4b-it-qat",
+      "gemini_api": false,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "Ou ta dwe pran NW 3rd Ave paske li pi kout epi li gen dènye machandiz. Li pi pi kout pase N Miami Ave, Biscayne Blvd, ak NW 2nd Ave pou direksyon ou. Se pi bon opsyon pou ou kounye a."
+    },
+    {
+      "hour": 16,
+      "language": "English",
+      "reversed": true,
+      "recommended": "NW 2nd Ave",
+      "engine": "gemini-api:gemma-4-26b-a4b-it",
+      "gemini_api": true,
+      "checks": {
+        "mentions_best": true,
+        "best_first": true,
+        "language": true,
+        "no_stigma": true,
+        "max_4_sentences": true
+      },
+      "passed": true,
+      "text": "I recommend walking along NW 2nd Ave because it offers the most shade with 41% coverage compared to the other routes. While it has fewer open venues nearby than Biscayne Blvd or N Miami Ave, it remains the best choice for minimizing direct sun exposure. You will find this path more sheltered than the alternatives during your afternoon walk."
+    }
+  ]
+}
