@@ -1,0 +1,12 @@
+{
+  "name": "sombraroute-mobile",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Capacitor native shell for SombraRoute (loads the Flask web UI from server.url)",
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3"
+  }
+}

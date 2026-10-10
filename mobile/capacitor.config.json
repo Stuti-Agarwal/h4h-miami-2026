@@ -1,0 +1,9 @@
+{
+  "appId": "org.h4hmiami.sombraroute",
+  "appName": "SombraRoute",
+  "webDir": "www",
+  "server": {
+    "url": "http://localhost:5050",
+    "cleartext": true
+  }
+}
